@@ -28,6 +28,10 @@
     "docker_run_args": {
       "type": "Optional[Array[String[1]]]",
       "description": "If specified, the arguements will be passed to docker if docker image is specified."
+    },
+    "base_64_ca_cert": {
+      "type": "Optional[String[1]]",
+      "description": "Ca cert needed to communicate with CD4PE if ssl is enabled."
     }
   },
 

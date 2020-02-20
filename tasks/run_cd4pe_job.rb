@@ -5,6 +5,7 @@ require 'rubygems/package'
 require 'open3'
 require 'uri'
 require 'net/http'
+require 'base64'
 
 class Logger < Object
   # Class to track logs + timestamps. To be returned as part of the Bolt log output
@@ -82,9 +83,10 @@ end
 class CD4PEClient < Object
   attr_reader :config, :owner_ajax_path
 
-  def initialize(web_ui_endpoint, job_token, logger)
+  def initialize(web_ui_endpoint:, job_token:, ca_cert_file: nil, logger:)
     @web_ui_endpoint = web_ui_endpoint
     @job_token = job_token
+    @ca_cert_file = ca_cert_file
     @logger = logger
 
     uri = URI.parse(web_ui_endpoint)
@@ -100,6 +102,7 @@ class CD4PEClient < Object
     connection = Net::HTTP.new(@http_config[:server], @http_config[:port])
     if @http_config[:scheme] == 'https'
       connection.use_ssl = true
+      connection.ca_file = @ca_cert_file
     end
 
     connection.read_timeout = 60 # 1 minute
@@ -164,7 +167,7 @@ class CD4PEJobRunner < Object
     :AFTER_JOB_SUCCESS => "AFTER_JOB_SUCCESS", 
     :AFTER_JOB_FAILURE => "AFTER_JOB_FAILURE" }
 
-  def initialize(working_dir:, job_token:, web_ui_endpoint:, job_owner:, job_instance_id:, logger:, docker_image: nil, docker_run_args: nil)
+  def initialize(working_dir:, job_token:, web_ui_endpoint:, job_owner:, job_instance_id:, logger:, base_64_ca_cert: nil, docker_image: nil, docker_run_args: nil)
     @working_dir = working_dir
     @job_token = job_token
     @web_ui_endpoint = web_ui_endpoint
@@ -178,6 +181,16 @@ class CD4PEJobRunner < Object
 
     @local_jobs_dir = File.join(@working_dir, "cd4pe_job", "jobs", "unix")
     @local_repo_dir = File.join(@working_dir, "cd4pe_job", "repo")
+
+    @ca_cert_file = nil
+    if (!base_64_ca_cert.nil?)
+      ca_cert = Base64.decode64(base_64_ca_cert)
+      @ca_cert_file = File.join(@working_dir, "ca.crt")
+      open(@ca_cert_file, "wb") do |file|
+        file.write(ca_cert)
+      end
+    end
+    
   end
 
 
@@ -188,7 +201,7 @@ class CD4PEJobRunner < Object
     # download payload bytes
     api_endpoint = File.join(@web_ui_endpoint, @job_owner, 'getJobScriptAndControlRepo')
     job_instance_endpoint = "#{api_endpoint}?jobInstanceId=#{@job_instance_id}"
-    client = CD4PEClient.new(job_instance_endpoint, @job_token, @logger)
+    client = CD4PEClient.new(web_ui_endpoint: job_instance_endpoint, job_token: @job_token, ca_cert_file: @ca_cert_file, logger: @logger)
     response = client.make_request(:get, job_instance_endpoint)
 
     case response
@@ -362,11 +375,12 @@ if __FILE__ == $0 # This block will only be invoked if this file is executed. Wi
     web_ui_endpoint = params['cd4pe_web_ui_endpoint']
     job_token = params['cd4pe_token']
     job_owner = params['cd4pe_job_owner']
+    base_64_ca_cert = params['base_64_ca_cert']
 
     set_job_env_vars(params)
     make_working_dir(working_dir)
 
-    job_runner = CD4PEJobRunner.new(working_dir: working_dir, docker_image: docker_image, docker_run_args: docker_run_args, job_token: job_token, web_ui_endpoint: web_ui_endpoint, job_owner: job_owner, job_instance_id: job_instance_id, logger: @logger)
+    job_runner = CD4PEJobRunner.new(working_dir: working_dir, docker_image: docker_image, docker_run_args: docker_run_args, job_token: job_token, web_ui_endpoint: web_ui_endpoint, job_owner: job_owner, job_instance_id: job_instance_id, base_64_ca_cert: base_64_ca_cert, logger: @logger)
     job_runner.get_job_script_and_control_repo
     output = job_runner.run_job
 
