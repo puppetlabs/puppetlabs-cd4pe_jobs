@@ -6,6 +6,7 @@ require 'open3'
 require 'uri'
 require 'net/http'
 require 'base64'
+require 'facter'
 
 class Logger < Object
   # Class to track logs + timestamps. To be returned as part of the Bolt log output
@@ -167,7 +168,7 @@ class CD4PEJobRunner < Object
     :AFTER_JOB_SUCCESS => "AFTER_JOB_SUCCESS", 
     :AFTER_JOB_FAILURE => "AFTER_JOB_FAILURE" }
 
-  def initialize(working_dir:, job_token:, web_ui_endpoint:, job_owner:, job_instance_id:, logger:, base_64_ca_cert: nil, docker_image: nil, docker_run_args: nil)
+  def initialize(working_dir:, job_token:, web_ui_endpoint:, job_owner:, job_instance_id:, logger:, windows_job: false, base_64_ca_cert: nil, docker_image: nil, docker_run_args: nil)
     @working_dir = working_dir
     @job_token = job_token
     @web_ui_endpoint = web_ui_endpoint
@@ -176,10 +177,12 @@ class CD4PEJobRunner < Object
     @docker_image = docker_image
     @docker_run_args = docker_run_args.nil? ? '' : docker_run_args.join(' ')
     @docker_based_job = !blank?(docker_image)
+    @windows_job = windows_job
 
     @logger = logger
 
-    @local_jobs_dir = File.join(@working_dir, "cd4pe_job", "jobs", "unix")
+    job_dir_name = windows_job ? "windows" : "unix"
+    @local_jobs_dir = File.join(@working_dir, "cd4pe_job", "jobs", job_dir_name)
     @local_repo_dir = File.join(@working_dir, "cd4pe_job", "repo")
 
     @ca_cert_file = nil
@@ -251,7 +254,13 @@ class CD4PEJobRunner < Object
     }
   
     # if a AFTER_JOB_SUCCESS or AFTER_JOB_FAILURE script exists, run it now!
-    run_followup_script = File.exists?(File.join(@local_jobs_dir, next_manifest_type))
+    run_followup_script = false
+    if (@windows_job)
+      run_followup_script = File.exists?(File.join(@local_jobs_dir, "#{next_manifest_type}.ps1"))
+    else
+      run_followup_script = File.exists?(File.join(@local_jobs_dir, next_manifest_type))
+    end
+
     if (run_followup_script)
       @logger.log("#{next_manifest_type} script specified.")
       followup_script_result = execute_manifest(next_manifest_type)
@@ -285,13 +294,19 @@ class CD4PEJobRunner < Object
   
   def run_with_system(manifest_type)
     local_job_script = File.join(@local_jobs_dir, manifest_type)
-    run_system_cmd(local_job_script)
+
+    cmd_to_execute = local_job_script
+    if (@windows_job)
+      cmd_to_execute = "powershell \"& {&'#{local_job_script}'}\""
+    end
+
+    run_system_cmd(cmd_to_execute)
   end
 
   def get_docker_run_cmd(manifest_type)
-    repo_volume_mount = "#{@local_repo_dir}:/repo"
-    scripts_volume_mount = "#{@local_jobs_dir}:/cd4pe_job"
-    docker_bash_script = "/cd4pe_job/#{manifest_type}"
+    repo_volume_mount = "\"#{@local_repo_dir}:/repo\""
+    scripts_volume_mount = "\"#{@local_jobs_dir}:/cd4pe_job\""
+    docker_bash_script = "\"/cd4pe_job/#{manifest_type}\""
     "docker run #{@docker_run_args} -v #{repo_volume_mount} -v #{scripts_volume_mount} #{@docker_image} #{docker_bash_script}"
   end
   
@@ -303,6 +318,7 @@ class CD4PEJobRunner < Object
   def run_system_cmd(cmd)
     output = ''
     exit_code = 0
+
     @logger.log("Executing system command: #{cmd}")
     Open3.popen2e(cmd) do |stdin, stdout_stderr, wait_thr|
       exit_code = wait_thr.value.exitstatus
@@ -366,6 +382,11 @@ end
 if __FILE__ == $0 # This block will only be invoked if this file is executed. Will NOT execute when 'required' (ie. for testing the contained classes)
   @logger = Logger.new
   begin
+
+    kernel = Facter.value(:kernel)
+    windows_job = kernel == 'windows'
+    @logger.log("System detected: #{kernel}")
+
     params = JSON.parse(STDIN.read)
     working_dir = File.join(Dir.pwd, 'cd4pe_job_working_dir')
 
@@ -380,7 +401,7 @@ if __FILE__ == $0 # This block will only be invoked if this file is executed. Wi
     set_job_env_vars(params)
     make_working_dir(working_dir)
 
-    job_runner = CD4PEJobRunner.new(working_dir: working_dir, docker_image: docker_image, docker_run_args: docker_run_args, job_token: job_token, web_ui_endpoint: web_ui_endpoint, job_owner: job_owner, job_instance_id: job_instance_id, base_64_ca_cert: base_64_ca_cert, logger: @logger)
+    job_runner = CD4PEJobRunner.new(working_dir: working_dir, docker_image: docker_image, docker_run_args: docker_run_args, job_token: job_token, web_ui_endpoint: web_ui_endpoint, job_owner: job_owner, job_instance_id: job_instance_id, base_64_ca_cert: base_64_ca_cert, windows_job: windows_job, logger: @logger)
     job_runner.get_job_script_and_control_repo
     output = job_runner.run_job
 
