@@ -1,5 +1,5 @@
 require 'open3'
-require_relative '../../tasks/run_cd4pe_job.rb'
+require_relative '../tasks/run_cd4pe_job.rb'
 
 describe 'run_cd4pe_job' do
   before(:all) do 
@@ -158,11 +158,11 @@ describe 'run_cd4pe_job' do
       expect(cmd_parts[3]).to eq(arg2)
       expect(cmd_parts[4]).to eq(arg3)
       expect(cmd_parts[5]).to eq('-v')
-      expect(cmd_parts[6].end_with?("/#{File.basename(@working_dir)}/cd4pe_job/repo:/repo")).to be(true)
+      expect(cmd_parts[6].end_with?("/#{File.basename(@working_dir)}/cd4pe_job/repo:/repo\"")).to be(true)
       expect(cmd_parts[7]).to eq('-v')
-      expect(cmd_parts[8].end_with?("/#{File.basename(@working_dir)}/cd4pe_job/jobs/unix:/cd4pe_job")).to be(true)
+      expect(cmd_parts[8].end_with?("/#{File.basename(@working_dir)}/cd4pe_job/jobs/unix:/cd4pe_job\"")).to be(true)
       expect(cmd_parts[9]).to eq(test_docker_image)
-      expect(cmd_parts[10]).to eq('/cd4pe_job/AFTER_JOB_SUCCESS')
+      expect(cmd_parts[10]).to eq('"/cd4pe_job/AFTER_JOB_SUCCESS"')
     end
   end
 end
@@ -230,6 +230,41 @@ describe 'cd4pe_job_helper::run_job' do
     expect(output[:job][:message].end_with?("command not found\n")).to be(true)
     expect(output[:after_job_failure][:exit_code]).to eq(0)
     expect(output[:after_job_failure][:message]).to eq("#{after_job_failure_message}\n")
+  end
+
+  it 'Runs the windows script when windows_job == true' do
+    $stdout = StringIO.new
+
+    expected_output = 'in job script'
+    after_job_success_message = 'in after success script'
+
+    File.write(@job_script, "echo #{expected_output}")
+    File.write(@after_job_success_script, "echo #{after_job_success_message}")
+
+    job_helper = CD4PEJobRunner.new(working_dir: @working_dir, job_token: @job_token, web_ui_endpoint: @web_ui_endpoint, job_owner: @job_owner, job_instance_id: @job_instance_id, windows_job: true, logger: @logger)
+    output = job_helper.run_job
+
+    expect(output[:job][:exit_code]).to eq(127)
+    expect(output[:job][:message]).to eq("sh: powershell: command not found\n")
+
+  end
+
+  it 'Runs the windows script (and followup windows script) when windows_job == true' do
+    $stdout = StringIO.new
+
+    expected_output = 'in job script'
+    after_job_success_message = 'in after success script'
+
+    File.write(@job_script, "echo #{expected_output}")
+    File.write(@after_job_success_script, "echo #{after_job_success_message}")
+
+    job_helper = CD4PEJobRunner.new(working_dir: @working_dir, job_token: @job_token, web_ui_endpoint: @web_ui_endpoint, job_owner: @job_owner, job_instance_id: @job_instance_id, windows_job: true, logger: @logger)
+    output = job_helper.run_job
+
+    expect(output[:job][:exit_code]).to eq(127)
+    expect(output[:job][:message]).to eq("sh: powershell: command not found\n")
+    expect(output[:job][:exit_code]).to eq(127)
+    expect(output[:job][:message]).to eq("sh: powershell: command not found\n")
   end
 end
 
