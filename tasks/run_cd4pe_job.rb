@@ -103,7 +103,11 @@ class CD4PEClient < Object
     connection = Net::HTTP.new(@http_config[:server], @http_config[:port])
     if @http_config[:scheme] == 'https'
       connection.use_ssl = true
-      connection.ca_file = @ca_cert_file
+      connection.verify_mode = OpenSSL::SSL::VERIFY_PEER
+      store = OpenSSL::X509::Store.new
+      store.set_default_paths
+      store.add_file(@ca_cert_file)
+      connection.cert_store = store
     end
 
     connection.read_timeout = 60 # 1 minute
