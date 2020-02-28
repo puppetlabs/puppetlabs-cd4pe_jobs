@@ -7,6 +7,7 @@ require 'uri'
 require 'net/http'
 require 'base64'
 require 'facter'
+require 'date'
 
 class Logger < Object
   # Class to track logs + timestamps. To be returned as part of the Bolt log output
@@ -378,9 +379,19 @@ def set_job_env_vars(task_params)
     end
 end
 
-def make_working_dir(working_dir)
-  @logger.log("Creating working directory #{working_dir}.")
-  Dir.mkdir(working_dir) unless File.exists?(working_dir)
+def make_dir(dir)
+  @logger.log("Creating directory #{dir}")
+  if (!File.exists?(dir))
+    Dir.mkdir(dir)
+    @logger.log("Successfully created directory: #{dir}")
+  else
+    @logger.log("Directory already exists: #{dir}")
+  end
+end
+
+def delete_dir(dir)
+  @logger.log("Deleting directory #{dir}")
+  FileUtils.rm_rf(dir)
 end
 
 if __FILE__ == $0 # This block will only be invoked if this file is executed. Will NOT execute when 'required' (ie. for testing the contained classes)
@@ -392,7 +403,6 @@ if __FILE__ == $0 # This block will only be invoked if this file is executed. Wi
     @logger.log("System detected: #{kernel}")
 
     params = JSON.parse(STDIN.read)
-    working_dir = File.join(Dir.pwd, 'cd4pe_job_working_dir')
 
     docker_image = params['docker_image']
     docker_run_args = params["docker_run_args"]
@@ -403,19 +413,25 @@ if __FILE__ == $0 # This block will only be invoked if this file is executed. Wi
     base_64_ca_cert = params['base_64_ca_cert']
 
     set_job_env_vars(params)
-    make_working_dir(working_dir)
 
-    job_runner = CD4PEJobRunner.new(working_dir: working_dir, docker_image: docker_image, docker_run_args: docker_run_args, job_token: job_token, web_ui_endpoint: web_ui_endpoint, job_owner: job_owner, job_instance_id: job_instance_id, base_64_ca_cert: base_64_ca_cert, windows_job: windows_job, logger: @logger)
+    root_job_dir = File.join(Dir.pwd, 'cd4pe_job_working_dir')
+    make_dir(root_job_dir)
+    @working_dir = File.join(root_job_dir, "cd4pe_job_instance_#{job_instance_id}_#{DateTime.now.strftime('%Q')}")
+    make_dir(@working_dir)
+
+    job_runner = CD4PEJobRunner.new(working_dir: @working_dir, docker_image: docker_image, docker_run_args: docker_run_args, job_token: job_token, web_ui_endpoint: web_ui_endpoint, job_owner: job_owner, job_instance_id: job_instance_id, base_64_ca_cert: base_64_ca_cert, windows_job: windows_job, logger: @logger)
     job_runner.get_job_script_and_control_repo
     output = job_runner.run_job
 
     output[:logs] = @logger.get_logs
     puts output.to_json
-
+    
     exit get_combined_exit_code(output)
   rescue => e
     @logger.log(e.message)
     puts({ status: 'failure', error: e.message, logs: @logger.get_logs }.to_json)
     exit 1
+  ensure
+    delete_dir(@working_dir)
   end
 end
