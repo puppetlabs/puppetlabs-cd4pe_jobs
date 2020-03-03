@@ -105,10 +105,12 @@ class CD4PEClient < Object
     if @http_config[:scheme] == 'https'
       connection.use_ssl = true
       connection.verify_mode = OpenSSL::SSL::VERIFY_PEER
-      store = OpenSSL::X509::Store.new
-      store.set_default_paths
-      store.add_file(@ca_cert_file)
-      connection.cert_store = store
+      if !@ca_cert_file.nil?
+        store = OpenSSL::X509::Store.new
+        store.set_default_paths
+        store.add_file(@ca_cert_file)
+        connection.cert_store = store
+      end
     end
 
     connection.read_timeout = 60 # 1 minute
