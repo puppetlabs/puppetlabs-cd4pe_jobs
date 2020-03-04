@@ -140,7 +140,7 @@ class CD4PEClient < Object
           raise "cd4pe_client#make_request called with invalid request type #{type}"
         end
       rescue SocketError => e
-        raise "Could not connect to the CD4PE service at #{service_url}: #{e.inspect}", e.backtrace
+        raise "Could not connect to the CD4PE service at #{api_url}: #{e.inspect}", e.backtrace
       end
 
       case response
@@ -154,10 +154,10 @@ class CD4PEClient < Object
         raise "#{response.code} #{response.body}"
       when Net::HTTPInternalServerError
         if attempts < max_attempts # rubocop:disable Style/GuardClause
-          @logger.log("Received #{response} error from #{service_url}, attempting to retry. (Attempt #{attempts} of #{max_attempts})")
+          @logger.log("Received #{response} error from #{api_url}, attempting to retry. (Attempt #{attempts} of #{max_attempts})")
           Kernel.sleep(3)
         else
-          raise "Received #{attempts} server error responses from the CD4PE service at #{service_url}: #{response.code} #{response.body}"
+          raise "Received #{attempts} server error responses from the CD4PE service at #{api_url}: #{response.code} #{response.body}"
         end
       else
         return response
