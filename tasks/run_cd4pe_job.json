@@ -11,7 +11,8 @@
     },
     "cd4pe_token": {
       "type": "String[1]",
-      "description": "Token used to hit Tokened CD4PE endpoints."
+      "description": "Token used to hit Tokened CD4PE endpoints.",
+      "sensitive": true
     },
     "cd4pe_job_owner": {
       "type": "String[1]",
