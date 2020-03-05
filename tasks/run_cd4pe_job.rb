@@ -314,7 +314,7 @@ class CD4PEJobRunner < Object
     repo_volume_mount = "\"#{@local_repo_dir}:/repo\""
     scripts_volume_mount = "\"#{@local_jobs_dir}:/cd4pe_job\""
     docker_bash_script = "\"/cd4pe_job/#{manifest_type}\""
-    "docker run #{@docker_run_args} -v #{repo_volume_mount} -v #{scripts_volume_mount} #{@docker_image} #{docker_bash_script}"
+    "docker run --rm #{@docker_run_args} -v #{repo_volume_mount} -v #{scripts_volume_mount} #{@docker_image} #{docker_bash_script}"
   end
   
   def run_with_docker(manifest_type)
