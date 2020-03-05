@@ -35,18 +35,18 @@ describe 'run_cd4pe_job' do
     end
   end
 
-  describe 'make_working_dir' do
+  describe 'make_dir' do
     it 'Makes working directory as specified.' do
       # validate dir does not exist
       test_dir = File.join(@working_dir, 'test_dir')
       expect(File.exists?(test_dir)).to be(false)
 
       # create dir and validate it exists
-      make_working_dir(test_dir)
+      make_dir(test_dir)
       expect(File.exists?(test_dir)).to be(true)
 
       # attempt to create again to validate it does not throw
-      make_working_dir(test_dir)
+      make_dir(test_dir)
     end
   end
 
@@ -154,15 +154,16 @@ describe 'run_cd4pe_job' do
   
       expect(cmd_parts[0]).to eq('docker')
       expect(cmd_parts[1]).to eq('run')
-      expect(cmd_parts[2]).to eq(arg1)
-      expect(cmd_parts[3]).to eq(arg2)
-      expect(cmd_parts[4]).to eq(arg3)
-      expect(cmd_parts[5]).to eq('-v')
-      expect(cmd_parts[6].end_with?("/#{File.basename(@working_dir)}/cd4pe_job/repo:/repo\"")).to be(true)
-      expect(cmd_parts[7]).to eq('-v')
-      expect(cmd_parts[8].end_with?("/#{File.basename(@working_dir)}/cd4pe_job/jobs/unix:/cd4pe_job\"")).to be(true)
-      expect(cmd_parts[9]).to eq(test_docker_image)
-      expect(cmd_parts[10]).to eq('"/cd4pe_job/AFTER_JOB_SUCCESS"')
+      expect(cmd_parts[2]).to eq('--rm')
+      expect(cmd_parts[3]).to eq(arg1)
+      expect(cmd_parts[4]).to eq(arg2)
+      expect(cmd_parts[5]).to eq(arg3)
+      expect(cmd_parts[6]).to eq('-v')
+      expect(cmd_parts[7].end_with?("/#{File.basename(@working_dir)}/cd4pe_job/repo:/repo\"")).to be(true)
+      expect(cmd_parts[8]).to eq('-v')
+      expect(cmd_parts[9].end_with?("/#{File.basename(@working_dir)}/cd4pe_job/jobs/unix:/cd4pe_job\"")).to be(true)
+      expect(cmd_parts[10]).to eq(test_docker_image)
+      expect(cmd_parts[11]).to eq('"/cd4pe_job/AFTER_JOB_SUCCESS"')
     end
   end
 end
