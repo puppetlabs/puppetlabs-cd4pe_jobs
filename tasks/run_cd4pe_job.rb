@@ -310,6 +310,14 @@ class CD4PEJobRunner < Object
     run_system_cmd(cmd_to_execute)
   end
 
+  def update_docker_image
+    if (@docker_based_job)
+      @logger.log("Updating docker image: #{@docker_image}")
+      result = run_system_cmd("docker pull #{@docker_image}")
+      @logger.log(result[:message])
+    end
+  end
+
   def get_docker_run_cmd(manifest_type)
     repo_volume_mount = "\"#{@local_repo_dir}:/repo\""
     scripts_volume_mount = "\"#{@local_jobs_dir}:/cd4pe_job\""
@@ -423,6 +431,7 @@ if __FILE__ == $0 # This block will only be invoked if this file is executed. Wi
 
     job_runner = CD4PEJobRunner.new(working_dir: @working_dir, docker_image: docker_image, docker_run_args: docker_run_args, job_token: job_token, web_ui_endpoint: web_ui_endpoint, job_owner: job_owner, job_instance_id: job_instance_id, base_64_ca_cert: base_64_ca_cert, windows_job: windows_job, logger: @logger)
     job_runner.get_job_script_and_control_repo
+    job_runner.update_docker_image
     output = job_runner.run_job
 
     output[:logs] = @logger.get_logs
