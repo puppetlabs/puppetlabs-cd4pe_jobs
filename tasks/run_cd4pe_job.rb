@@ -113,7 +113,7 @@ class CD4PEClient < Object
       end
     end
 
-    connection.read_timeout = 60 # 1 minute
+    connection.read_timeout = 300 # 5 minutes
 
     headers = {
       'Content-Type' => 'application/json',
@@ -141,16 +141,15 @@ class CD4PEClient < Object
         end
       rescue SocketError => e
         raise "Could not connect to the CD4PE service at #{api_url}: #{e.inspect}", e.backtrace
+      rescue Net::ReadTimeout => e
+        @logger.log("Timed out at #{connection.read_timeout} seconds waiting for response.")
+        raise e
       end
 
       case response
-      when Net::HTTPSuccess
+      when Net::HTTPSuccess, Net::HTTPRedirection
         return response
-      when Net::HTTPRedirection
-        return response
-      when Net::HTTPNotFound
-        raise "#{response.code} #{response.body}"
-      when Net::HTTPServerError
+      when Net::HTTPNotFound, Net::HTTPServerError
         raise "#{response.code} #{response.body}"
       when Net::HTTPInternalServerError
         if attempts < max_attempts # rubocop:disable Style/GuardClause
