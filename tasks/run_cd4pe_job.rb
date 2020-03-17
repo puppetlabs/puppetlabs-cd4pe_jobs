@@ -119,6 +119,7 @@ class CD4PEClient < Object
       'Content-Type' => 'application/json',
       'Authorization' => "Bearer token #{@job_token}",
     }
+    uri = URI.parse(api_url)
 
     max_attempts = 3
     attempts = 0
@@ -129,13 +130,13 @@ class CD4PEClient < Object
         @logger.log("cd4pe_client: requesting #{type} #{api_url}")
         case type
         when :delete
-          response = connection.delete(api_url, headers)
+          response = connection.delete(uri, headers)
         when :get
-          response = connection.get(api_url, headers)
+          response = connection.get(uri, headers)
         when :post
-          response = connection.post(api_url, payload, headers)
+          response = connection.post(uri, payload, headers)
         when :put
-          response = connection.put(api_url, payload, headers)
+          response = connection.put(uri, payload, headers)
         else
           raise "cd4pe_client#make_request called with invalid request type #{type}"
         end
