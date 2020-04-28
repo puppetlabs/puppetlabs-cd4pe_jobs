@@ -200,9 +200,23 @@ class CD4PEJobRunner < Object
         file.write(ca_cert)
       end
     end
+
+    set_home_env_var
+    set_repo_dir_env_var
     
   end
 
+  def set_home_env_var
+    if (@windows_job)
+      ENV['HOME'] = run_system_cmd("powershell (Resolve-Path ~")[:message]
+    else
+      ENV['HOME'] = Dir.home
+    end
+  end
+
+  def set_repo_dir_env_var
+    ENV['REPO_DIR'] = @local_repo_dir
+  end
 
   def get_job_script_and_control_repo
     @logger.log("Downloading job scripts and control repo from CD4PE.")

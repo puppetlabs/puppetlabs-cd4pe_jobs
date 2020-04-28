@@ -136,6 +136,13 @@ describe 'run_cd4pe_job' do
   
       expect(job_helper.docker_run_args).to eq("#{arg1} #{arg2} #{arg3}")
     end
+
+    it 'Sets the HOME and REPO_DIR env vars' do
+      job_helper = CD4PEJobRunner.new(working_dir: @working_dir, job_token: @job_token, web_ui_endpoint: @web_ui_endpoint, job_owner: @job_owner, job_instance_id: @job_instance_id, logger: @logger)
+
+      expect(ENV['HOME'] != nil).to be(true)
+      expect(ENV['REPO_DIR']).to eq("#{@working_dir}/cd4pe_job/repo")
+    end
   end
 
   describe 'cd4pe_job_helper::get_docker_run_cmd' do
