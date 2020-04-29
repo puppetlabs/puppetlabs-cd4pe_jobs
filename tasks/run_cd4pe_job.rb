@@ -8,6 +8,7 @@ require 'net/http'
 require 'base64'
 require 'facter'
 require 'date'
+require 'etc'
 
 class Logger < Object
   # Class to track logs + timestamps. To be returned as part of the Bolt log output
@@ -200,9 +201,27 @@ class CD4PEJobRunner < Object
         file.write(ca_cert)
       end
     end
+
+    set_home_env_var
+    set_repo_dir_env_var
     
   end
 
+  def set_home_env_var
+    # when the puppet orchestrator runs a Bolt task, it does so as a user without $HOME set.
+    # We need to ensure $HOME is set so jobs that rely on this env var can succeed.
+    if (@windows_job)
+      # if windows, we can rely on powershell
+      ENV['HOME'] = run_system_cmd("powershell (Resolve-Path ~")[:message]
+    else
+      # if not windows, we must use a ruby solution to ensure cross-system compatibility.
+      ENV['HOME'] = Etc.getpwuid.dir
+    end
+  end
+
+  def set_repo_dir_env_var
+    ENV['REPO_DIR'] = @local_repo_dir
+  end
 
   def get_job_script_and_control_repo
     @logger.log("Downloading job scripts and control repo from CD4PE.")
