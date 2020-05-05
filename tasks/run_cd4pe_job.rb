@@ -363,7 +363,7 @@ class CD4PEJobRunner < Object
     if (@windows_job)
       cmd_to_execute = "powershell \"& {&'#{local_job_script}'}\""
     else
-      FileUtils.chmod 0750, cmd_to_execute
+      FileUtils.chmod 0755, cmd_to_execute
     end
 
     run_system_cmd(cmd_to_execute)
