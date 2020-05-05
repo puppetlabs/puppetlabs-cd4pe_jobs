@@ -364,6 +364,7 @@ class CD4PEJobRunner < Object
       cmd_to_execute = "powershell \"& {&'#{local_job_script}'}\""
     end
 
+    FileUtils.chmod 0750, cmd_to_execute
     run_system_cmd(cmd_to_execute)
   end
 
