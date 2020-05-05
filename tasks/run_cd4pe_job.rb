@@ -114,7 +114,7 @@ class CD4PEClient < Object
       end
     end
 
-    connection.read_timeout = 300 # 5 minutes
+    connection.read_timeout = 600 # 10 minutes
 
     headers = {
       'Content-Type' => 'application/json',
