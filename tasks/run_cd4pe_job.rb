@@ -210,11 +210,9 @@ class CD4PEJobRunner < Object
   def set_home_env_var
     # when the puppet orchestrator runs a Bolt task, it does so as a user without $HOME set.
     # We need to ensure $HOME is set so jobs that rely on this env var can succeed.
-    if (@windows_job)
-      # if windows, we can rely on powershell
-      ENV['HOME'] = run_system_cmd("powershell (Resolve-Path ~")[:message]
-    else
+    if (!@windows_job)
       # if not windows, we must use a ruby solution to ensure cross-system compatibility.
+      # $HOME is set by default on windows.
       ENV['HOME'] = Etc.getpwuid.dir
     end
   end
