@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 No unreleased changes.
 
+## [1.1.1](https://github.com/puppetlabs/puppetlabs-cd4pe_jobs/tree/1.1.1)
+
+### Fixed
+
+- No longer fail when setting \$HOME on windows machines.
+
 ## [1.1.0](https://github.com/puppetlabs/puppetlabs-cd4pe_jobs/tree/1.1.0)
 
 ### Added
