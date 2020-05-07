@@ -30,11 +30,13 @@ class GZipHelper
   TAR_LONGLINK = '././@LongLink'.freeze
   SYMLINK_SYMBOL = '2'.freeze
 
-  def self.unzip(zipped_file_path, destination_path)
+  def self.unzip(zipped_file_path, destination_path, logger:)
+    @logger = logger
     # helper functions
     def self.make_dir(entry, dest)
       FileUtils.rm_rf(dest) unless File.directory?(dest)
       FileUtils.mkdir_p(dest, :mode => entry.header.mode, :verbose => false)
+      @logger.log("Setting directory permissions '#{sprintf "%o", entry.header.mode}' on '#{dest}'")
     end
 
     def self.make_file(entry, dest)
@@ -43,6 +45,7 @@ class GZipHelper
         file.print(entry.read)
       end
       FileUtils.chmod(entry.header.mode, dest, :verbose => false)
+      @logger.log("Setting file permissions '#{sprintf "%o", entry.header.mode}' on '#{dest}'")
     end
 
     def self.preserve_symlink(entry, dest)
@@ -257,10 +260,12 @@ class CD4PEJobRunner < Object
       file.write(response.body)
     end
 
+    FileUtils.copy_file target_file, '/tmp/cd4pe.tar.gz'
+
     # unzip file
     begin
       @logger.log("Unzipping #{target_file} to #{@working_dir}")
-      GZipHelper.unzip(target_file, @working_dir)
+      GZipHelper.unzip(target_file, @working_dir, logger: @logger)
     rescue => e
       error = "Failed to decompress CD4PE repo/script payload. This can occur if the downloaded file is not in gzip format, or if the endpoint hit returned nothing. Error: #{e.message}"
       raise error
