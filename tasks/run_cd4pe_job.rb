@@ -268,7 +268,13 @@ class CD4PEJobRunner < Object
     }
 
     client = CD4PEClient.new(web_ui_endpoint: api_endpoint, job_token: @job_token, ca_cert_file: @ca_cert_file, logger: @logger)
-    response = client.make_request(:post, api_endpoint, payload.to_json)
+
+    begin
+      response = client.make_request(:post, api_endpoint, payload.to_json)
+    rescue => e
+      @logger.log("Problem sending logs to CD4PE. Printing output to std output. #{e.message}") # test by hacking endpoint
+      puts output.to_json
+    end
   end
 
   def run_job
