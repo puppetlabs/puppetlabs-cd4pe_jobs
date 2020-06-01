@@ -255,6 +255,28 @@ class CD4PEJobRunner < Object
     target_file
   end
 
+  def send_job_output_to_cd4pe(output)
+    @logger.log("Sending logs to CD4PE.")
+
+    api_endpoint = File.join(@web_ui_endpoint, @job_owner, 'ajax')
+    payload = {
+      op: 'SavePuppetAgentJobOutput',
+      content: {
+        jobInstanceId: @job_instance_id,
+        output: output
+      },
+    }
+
+    client = CD4PEClient.new(web_ui_endpoint: api_endpoint, job_token: @job_token, ca_cert_file: @ca_cert_file, logger: @logger)
+
+    begin
+      client.make_request(:post, api_endpoint, payload.to_json)
+    rescue => e
+      @logger.log("Problem sending logs to CD4PE. Printing logs to std out. #{e.message}")
+      puts output.to_json
+    end
+  end
+
   def run_job
     @logger.log("Running job instance #{@job_instance_id}.")
 
@@ -452,12 +474,12 @@ if __FILE__ == $0 # This block will only be invoked if this file is executed. Wi
     output = job_runner.run_job
 
     output[:logs] = @logger.get_logs
-    puts output.to_json
+    job_runner.send_job_output_to_cd4pe(output)
     
     exit get_combined_exit_code(output)
   rescue => e
     @logger.log(e.message)
-    puts({ status: 'failure', error: e.message, logs: @logger.get_logs }.to_json)
+    job_runner.send_job_output_to_cd4pe({ status: 'failure', error: e.message, logs: @logger.get_logs })  
     exit 1
   ensure
     delete_dir(@working_dir)
