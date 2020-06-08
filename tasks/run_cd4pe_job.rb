@@ -374,11 +374,9 @@ class CD4PEJobRunner < Object
     exit_code = 0
 
     @logger.log("Executing system command: #{cmd}")
-    Open3.popen2e(cmd) do |stdin, stdout_stderr, wait_thr|
-      exit_code = wait_thr.value.exitstatus
-      output = stdout_stderr.read
-    end
-  
+    output, wait_thr = Open3.capture2e(cmd)
+    exit_code = wait_thr.exitstatus
+
     { :exit_code => exit_code, :message => output }
   end
 
