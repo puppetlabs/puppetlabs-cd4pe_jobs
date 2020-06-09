@@ -270,9 +270,13 @@ class CD4PEJobRunner < Object
     client = CD4PEClient.new(web_ui_endpoint: api_endpoint, job_token: @job_token, ca_cert_file: @ca_cert_file, logger: @logger)
 
     begin
-      client.make_request(:post, api_endpoint, payload.to_json)
+      response = client.make_request(:post, api_endpoint, payload.to_json)
+      if (response.code != 200)
+        @logger.log("Unable to send logs directly to CD4PE. Printing logs to std out.")
+        puts output.to_json
+      end
     rescue => e
-      @logger.log("Problem sending logs to CD4PE. Printing logs to std out. #{e.message}")
+      @logger.log("Problem sending logs to CD4PE. Printing logs to std out. Error message: #{e.message}")
       puts output.to_json
     end
   end
