@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 No unreleased changes.
 
+## [1.2.0](https://github.com/puppetlabs/puppetlabs-cd4pe_jobs/tree/1.2.0)
+
+### Fixed
+
+- Improved support for jobs with substantial log output.
+
 ## [1.1.1](https://github.com/puppetlabs/puppetlabs-cd4pe_jobs/tree/1.1.1)
 
 ### Fixed
