@@ -169,11 +169,11 @@ end
 
 class CD4PEJobRunner < Object
   # Class for downloading, running, and logging CD4PE jobs
-  attr_reader :docker_run_args 
+  attr_reader :docker_run_args
 
-  MANIFEST_TYPE = { 
-    :JOB => "JOB", 
-    :AFTER_JOB_SUCCESS => "AFTER_JOB_SUCCESS", 
+  MANIFEST_TYPE = {
+    :JOB => "JOB",
+    :AFTER_JOB_SUCCESS => "AFTER_JOB_SUCCESS",
     :AFTER_JOB_FAILURE => "AFTER_JOB_FAILURE" }
 
   def initialize(working_dir:, job_token:, web_ui_endpoint:, job_owner:, job_instance_id:, logger:, windows_job: false, base_64_ca_cert: nil, docker_image: nil, docker_run_args: nil)
@@ -204,7 +204,7 @@ class CD4PEJobRunner < Object
 
     set_home_env_var
     set_repo_dir_env_var
-    
+
   end
 
   def set_home_env_var
@@ -299,10 +299,10 @@ class CD4PEJobRunner < Object
   def on_job_complete(result, next_manifest_type)
     output = {}
     output[:job] = {
-      exit_code: result[:exit_code], 
+      exit_code: result[:exit_code],
       message: result[:message]
     }
-  
+
     # if a AFTER_JOB_SUCCESS or AFTER_JOB_FAILURE script exists, run it now!
     run_followup_script = false
     if (@windows_job)
@@ -315,7 +315,7 @@ class CD4PEJobRunner < Object
       @logger.log("#{next_manifest_type} script specified.")
       followup_script_result = execute_manifest(next_manifest_type)
       output[next_manifest_type.downcase.to_sym] = {
-        exit_code: followup_script_result[:exit_code], 
+        exit_code: followup_script_result[:exit_code],
         message: followup_script_result[:message]
       }
     end
@@ -333,15 +333,15 @@ class CD4PEJobRunner < Object
       @logger.log("No docker image specified. Running #{manifest_type} manifest directly on machine.")
       result = run_with_system(manifest_type)
     end
-    
+
     if (result[:exit_code] == 0)
       @logger.log("#{manifest_type} succeeded!")
-    else 
+    else
       @logger.log("#{manifest_type} failed with exit code: #{result[:exit_code]}: #{result[:message]}")
     end
     result
   end
-  
+
   def run_with_system(manifest_type)
     local_job_script = File.join(@local_jobs_dir, manifest_type)
 
@@ -367,12 +367,12 @@ class CD4PEJobRunner < Object
     docker_bash_script = "\"/cd4pe_job/#{manifest_type}\""
     "docker run --rm #{@docker_run_args} -v #{repo_volume_mount} -v #{scripts_volume_mount} #{@docker_image} #{docker_bash_script}"
   end
-  
+
   def run_with_docker(manifest_type)
     docker_cmd = get_docker_run_cmd(manifest_type)
     run_system_cmd(docker_cmd)
   end
-  
+
   def run_system_cmd(cmd)
     output = ''
     exit_code = 0
@@ -477,11 +477,11 @@ if __FILE__ == $0 # This block will only be invoked if this file is executed. Wi
 
     output[:logs] = @logger.get_logs
     job_runner.send_job_output_to_cd4pe(output)
-    
+
     exit get_combined_exit_code(output)
   rescue => e
     @logger.log(e.message)
-    job_runner.send_job_output_to_cd4pe({ status: 'failure', error: e.message, logs: @logger.get_logs })  
+    job_runner.send_job_output_to_cd4pe({ status: 'failure', error: e.message, logs: @logger.get_logs })
     exit 1
   ensure
     delete_dir(@working_dir)
