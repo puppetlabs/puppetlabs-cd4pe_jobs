@@ -271,7 +271,7 @@ class CD4PEJobRunner < Object
 
     begin
       response = client.make_request(:post, api_endpoint, payload.to_json)
-      if (response.code != '200')
+      if (!response.is_a?(Net::HTTPSuccess))
         @logger.log("Unable to send logs directly to CD4PE. Printing logs to std out. #{response.code} #{response.body}")
         puts output.to_json
       end
