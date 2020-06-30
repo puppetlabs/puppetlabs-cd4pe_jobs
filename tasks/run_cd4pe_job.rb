@@ -86,10 +86,11 @@ end
 class CD4PEClient < Object
   attr_reader :config, :owner_ajax_path
 
-  def initialize(web_ui_endpoint:, job_token:, ca_cert_file: nil, logger:)
+  def initialize(web_ui_endpoint:, job_token:, ca_cert_file: nil, http_read_timeout_seconds:, logger:)
     @web_ui_endpoint = web_ui_endpoint
     @job_token = job_token
     @ca_cert_file = ca_cert_file
+    @http_read_timeout_seconds = http_read_timeout_seconds
     @logger = logger
 
     uri = URI.parse(web_ui_endpoint)
@@ -114,7 +115,7 @@ class CD4PEClient < Object
       end
     end
 
-    connection.read_timeout = 600 # 10 minutes
+    connection.read_timeout = @http_read_timeout_seconds
 
     headers = {
       'Content-Type' => 'application/json',
@@ -128,7 +129,7 @@ class CD4PEClient < Object
     while attempts < max_attempts
       attempts += 1
       begin
-        @logger.log("cd4pe_client: requesting #{type} #{api_url}")
+        @logger.log("cd4pe_client: requesting #{type} #{api_url} with read timeout: #{connection.read_timeout} seconds")
         case type
         when :delete
           response = connection.delete(uri, headers)
@@ -169,14 +170,14 @@ end
 
 class CD4PEJobRunner < Object
   # Class for downloading, running, and logging CD4PE jobs
-  attr_reader :docker_run_args 
+  attr_reader :docker_run_args, :http_read_timeout_seconds
 
   MANIFEST_TYPE = { 
     :JOB => "JOB", 
     :AFTER_JOB_SUCCESS => "AFTER_JOB_SUCCESS", 
     :AFTER_JOB_FAILURE => "AFTER_JOB_FAILURE" }
 
-  def initialize(working_dir:, job_token:, web_ui_endpoint:, job_owner:, job_instance_id:, logger:, windows_job: false, base_64_ca_cert: nil, docker_image: nil, docker_run_args: nil)
+  def initialize(working_dir:, job_token:, web_ui_endpoint:, job_owner:, job_instance_id:, logger:, windows_job: false, base_64_ca_cert: nil, docker_image: nil, docker_run_args: nil, http_read_timeout_seconds: 600)
     @working_dir = working_dir
     @job_token = job_token
     @web_ui_endpoint = web_ui_endpoint
@@ -186,6 +187,7 @@ class CD4PEJobRunner < Object
     @docker_run_args = docker_run_args.nil? ? '' : docker_run_args.join(' ')
     @docker_based_job = !blank?(docker_image)
     @windows_job = windows_job
+    @http_read_timeout_seconds = http_read_timeout_seconds
 
     @logger = logger
 
@@ -228,7 +230,7 @@ class CD4PEJobRunner < Object
     # download payload bytes
     api_endpoint = File.join(@web_ui_endpoint, @job_owner, 'getJobScriptAndControlRepo')
     job_instance_endpoint = "#{api_endpoint}?jobInstanceId=#{@job_instance_id}"
-    client = CD4PEClient.new(web_ui_endpoint: job_instance_endpoint, job_token: @job_token, ca_cert_file: @ca_cert_file, logger: @logger)
+    client = CD4PEClient.new(web_ui_endpoint: job_instance_endpoint, job_token: @job_token, ca_cert_file: @ca_cert_file, http_read_timeout_seconds: @http_read_timeout_seconds, logger: @logger)
     response = client.make_request(:get, job_instance_endpoint)
 
     case response
@@ -267,7 +269,7 @@ class CD4PEJobRunner < Object
       },
     }
 
-    client = CD4PEClient.new(web_ui_endpoint: api_endpoint, job_token: @job_token, ca_cert_file: @ca_cert_file, logger: @logger)
+    client = CD4PEClient.new(web_ui_endpoint: api_endpoint, job_token: @job_token, ca_cert_file: @ca_cert_file, http_read_timeout_seconds: @http_read_timeout_seconds, logger: @logger)
 
     begin
       response = client.make_request(:post, api_endpoint, payload.to_json)
@@ -462,6 +464,7 @@ if __FILE__ == $0 # This block will only be invoked if this file is executed. Wi
     job_token = params['cd4pe_token']
     job_owner = params['cd4pe_job_owner']
     base_64_ca_cert = params['base_64_ca_cert']
+    http_read_timeout_seconds = params['http_read_timeout_seconds'] || 600
 
     set_job_env_vars(params)
 
@@ -470,7 +473,7 @@ if __FILE__ == $0 # This block will only be invoked if this file is executed. Wi
     @working_dir = File.join(root_job_dir, "cd4pe_job_instance_#{job_instance_id}_#{DateTime.now.strftime('%Q')}")
     make_dir(@working_dir)
 
-    job_runner = CD4PEJobRunner.new(working_dir: @working_dir, docker_image: docker_image, docker_run_args: docker_run_args, job_token: job_token, web_ui_endpoint: web_ui_endpoint, job_owner: job_owner, job_instance_id: job_instance_id, base_64_ca_cert: base_64_ca_cert, windows_job: windows_job, logger: @logger)
+    job_runner = CD4PEJobRunner.new(working_dir: @working_dir, docker_image: docker_image, docker_run_args: docker_run_args, job_token: job_token, web_ui_endpoint: web_ui_endpoint, job_owner: job_owner, job_instance_id: job_instance_id, base_64_ca_cert: base_64_ca_cert, windows_job: windows_job, http_read_timeout_seconds: http_read_timeout_seconds, logger: @logger)
     job_runner.get_job_script_and_control_repo
     job_runner.update_docker_image
     output = job_runner.run_job
