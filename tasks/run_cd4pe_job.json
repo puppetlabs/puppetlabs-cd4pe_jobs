@@ -24,11 +24,16 @@
     },
     "docker_image": {
       "type": "Optional[String[1]]",
-      "description": "If specified, te job will attempt to run inside the docker container."
+      "description": "If specified, the job will attempt to run inside the docker container."
     },
     "docker_run_args": {
       "type": "Optional[Array[String[1]]]",
       "description": "If specified, the arguements will be passed to docker if docker image is specified."
+    },
+    "docker_pull_creds": {
+      "type": "Optional[String[1]]",
+      "description": "Base64-encoded docker config.json to use when pulling the specified docker image.",
+      "sensitive": true
     },
     "base_64_ca_cert": {
       "type": "Optional[String[1]]",

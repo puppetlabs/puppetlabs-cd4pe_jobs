@@ -1,4 +1,6 @@
 require 'open3'
+require 'base64'
+require 'json'
 require_relative '../tasks/run_cd4pe_job.rb'
 
 describe 'run_cd4pe_job' do
@@ -9,6 +11,11 @@ describe 'run_cd4pe_job' do
   before(:each) do
     @working_dir = File.join(Dir.getwd, "test_working_dir")
     Dir.mkdir(@working_dir)
+
+    # Ensure tests don't write to /etc/docker/certs.d
+    @certs_dir = File.join(@working_dir, "certs.d")
+    CD4PEJobRunner.send(:remove_const, :DOCKER_CERTS)
+    CD4PEJobRunner.const_set(:DOCKER_CERTS, @certs_dir)
 
     @web_ui_endpoint = 'https://testtest.com'
     @job_token = 'alksjdbhfnadhsbf'
@@ -142,6 +149,41 @@ describe 'run_cd4pe_job' do
 
       expect(ENV['HOME'] != nil).to be(true)
       expect(ENV['REPO_DIR']).to eq("#{@working_dir}/cd4pe_job/repo")
+    end
+  end
+
+  describe 'cd4pe_job_helper::update_docker_image' do
+    let(:test_docker_image) { 'puppetlabs/test:10.0.1' }
+    it 'Generates a docker pull command.' do
+      job_helper = CD4PEJobRunner.new(working_dir: @working_dir, docker_image: test_docker_image, job_token: @job_token, web_ui_endpoint: @web_ui_endpoint, job_owner: @job_owner, job_instance_id: @job_instance_id, logger: @logger)
+      docker_pull_command = job_helper.get_docker_pull_cmd
+      expect(docker_pull_command).to eq("docker pull #{test_docker_image}")
+    end
+
+    context 'with config' do
+      let(:hostname) { 'host1' }
+      let(:creds_json) { {auths: {hostname => {}}}.to_json }
+      let(:creds_b64) { Base64.encode64(creds_json) }
+      let(:cert_txt) { 'junk' }
+      let(:cert_b64) { Base64.encode64(cert_txt) }
+
+      it 'Uses config when present.' do
+        job_helper = CD4PEJobRunner.new(working_dir: @working_dir, docker_image: test_docker_image, docker_pull_creds: creds_b64, job_token: @job_token, web_ui_endpoint: @web_ui_endpoint, job_owner: @job_owner, job_instance_id: @job_instance_id, logger: @logger)
+        config_json = File.join(@working_dir, '.docker', 'config.json')
+        expect(File.exists?(config_json)).to be(true)
+        expect(File.read(config_json)).to eq(creds_json)
+
+        docker_pull_command = job_helper.get_docker_pull_cmd
+        expect(docker_pull_command).to eq("docker --config #{File.join(@working_dir, '.docker')} pull #{test_docker_image}")
+      end
+
+      it 'Registers the CA cert when provided.' do
+        job_helper = CD4PEJobRunner.new(working_dir: @working_dir, docker_image: test_docker_image, docker_pull_creds: creds_b64, base_64_ca_cert: cert_b64, job_token: @job_token, web_ui_endpoint: @web_ui_endpoint, job_owner: @job_owner, job_instance_id: @job_instance_id, logger: @logger)
+
+        cert_file = File.join(@certs_dir, hostname, 'ca.crt')
+        expect(File.exists?(cert_file)).to be(true)
+        expect(File.read(cert_file)).to eq(cert_txt)
+      end
     end
   end
 
