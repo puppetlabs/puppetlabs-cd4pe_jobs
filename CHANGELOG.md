@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 No unreleased changes.
 
+## [1.3.0](https://github.com/puppetlabs/puppetlabs-cd4pe_jobs/tree/1.3.0)
+
+### Added
+
+- Added the ability to pass a custom net http timeout to jobs in order to increase the time a job waits for a response when hitting CD4PE endpoints.
+
 ## [1.2.1](https://github.com/puppetlabs/puppetlabs-cd4pe_jobs/tree/1.2.1)
 
 ### Fixed
