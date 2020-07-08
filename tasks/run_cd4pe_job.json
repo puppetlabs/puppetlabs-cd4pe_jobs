@@ -33,11 +33,6 @@
     "base_64_ca_cert": {
       "type": "Optional[String[1]]",
       "description": "Ca cert needed to communicate with CD4PE if ssl is enabled."
-    },
-    "http_read_timeout_seconds": {
-      "type": "Optional[Integer[1]]",
-      "description": "Number of seconds to wait before timeout when performing http requests against the cd4pe_web_ui_endpoint.",
-      "default": 600
     }
   },
 
