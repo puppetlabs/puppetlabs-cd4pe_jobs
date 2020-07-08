@@ -101,6 +101,20 @@ class CD4PEClient < Object
 
   end
 
+  def get_timeout
+    timeout = 600
+    timeout_env_var = ENV['HTTP_READ_TIMEOUT_SECONDS']
+    unless (timeout_env_var.nil?)
+      timeout_override = timeout_env_var.to_i
+      if (timeout_override != 0)
+        timeout = timeout_override
+      else
+        @logger.log("Unable to use HTTP_READ_TIMEOUT_SECONDS override: #{timeout_env_var}. Must be integer and non-zero.")
+      end
+    end
+    timeout
+  end
+
   def make_request(type, api_url, payload = '')
     connection = Net::HTTP.new(@http_config[:server], @http_config[:port])
     if @http_config[:scheme] == 'https'
@@ -114,7 +128,7 @@ class CD4PEClient < Object
       end
     end
 
-    connection.read_timeout = 600 # 10 minutes
+    connection.read_timeout = get_timeout
 
     headers = {
       'Content-Type' => 'application/json',
@@ -128,7 +142,7 @@ class CD4PEClient < Object
     while attempts < max_attempts
       attempts += 1
       begin
-        @logger.log("cd4pe_client: requesting #{type} #{api_url}")
+        @logger.log("cd4pe_client: requesting #{type} #{api_url} with read timeout: #{connection.read_timeout} seconds")
         case type
         when :delete
           response = connection.delete(uri, headers)
@@ -169,7 +183,7 @@ end
 
 class CD4PEJobRunner < Object
   # Class for downloading, running, and logging CD4PE jobs
-  attr_reader :docker_run_args 
+  attr_reader :docker_run_args
 
   MANIFEST_TYPE = { 
     :JOB => "JOB", 
