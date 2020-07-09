@@ -145,20 +145,6 @@ describe 'run_cd4pe_job' do
     end
   end
 
-  describe 'cd4pe_job_helper::initialize' do
-    it 'Sets defaults to 600 http_read_timeout_seconds when unset' do
-      job_helper = CD4PEJobRunner.new(working_dir: @working_dir, job_token: @job_token, web_ui_endpoint: @web_ui_endpoint, job_owner: @job_owner, job_instance_id: @job_instance_id, logger: @logger)
-
-      expect(job_helper.http_read_timeout_seconds).to eq(600)
-    end
-
-    it 'Sets http_read_timeout_seconds' do
-      expected_seconds = 100
-      job_helper = CD4PEJobRunner.new(working_dir: @working_dir, job_token: @job_token, web_ui_endpoint: @web_ui_endpoint, job_owner: @job_owner, job_instance_id: @job_instance_id, http_read_timeout_seconds: expected_seconds, logger: @logger)
-      expect(job_helper.http_read_timeout_seconds).to eq(expected_seconds)
-    end
-  end
-
   describe 'cd4pe_job_helper::get_docker_run_cmd' do
     it 'Generates the correct docker run command.' do
       test_manifest_type = "AFTER_JOB_SUCCESS"
