@@ -494,7 +494,8 @@ if __FILE__ == $0 # This block will only be invoked if this file is executed. Wi
     
     exit get_combined_exit_code(output)
   rescue => e
-    @logger.log(e.message)
+    # Write to stderr because job_runner may not be setup and send_job_output_to_cd4pe captures the error.
+    STDERR.puts(e.message)
     job_runner.send_job_output_to_cd4pe({ status: 'failure', error: e.message, logs: @logger.get_logs })  
     exit 1
   ensure
