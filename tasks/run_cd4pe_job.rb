@@ -190,7 +190,9 @@ class CD4PEJobRunner < Object
     :AFTER_JOB_SUCCESS => "AFTER_JOB_SUCCESS", 
     :AFTER_JOB_FAILURE => "AFTER_JOB_FAILURE" }
 
-  def initialize(working_dir:, job_token:, web_ui_endpoint:, job_owner:, job_instance_id:, logger:, windows_job: false, base_64_ca_cert: nil, docker_image: nil, docker_run_args: nil)
+  DOCKER_CERTS = '/etc/docker/certs.d'
+
+  def initialize(working_dir:, job_token:, web_ui_endpoint:, job_owner:, job_instance_id:, logger:, windows_job: false, base_64_ca_cert: nil, docker_image: nil, docker_run_args: nil, docker_pull_creds: nil)
     @working_dir = working_dir
     @job_token = job_token
     @web_ui_endpoint = web_ui_endpoint
@@ -213,6 +215,35 @@ class CD4PEJobRunner < Object
       @ca_cert_file = File.join(@working_dir, "ca.crt")
       open(@ca_cert_file, "wb") do |file|
         file.write(ca_cert)
+      end
+    end
+
+    @docker_pull_config = nil
+    if (!docker_pull_creds.nil?)
+      creds = Base64.decode64(docker_pull_creds)
+      @docker_pull_config = File.join(@working_dir, ".docker")
+      make_dir(@docker_pull_config)
+      open(File.join(@docker_pull_config, "config.json"), "wb") do |file|
+        file.write(creds)
+      end
+
+      # Ensure the ca_cert_file is added for each Docker registry we might use.
+      if @ca_cert_file
+        docker_conf = JSON.parse(creds)
+        docker_conf['auths'].each do |host, _cred|
+          dir = File.join(DOCKER_CERTS, host)
+          FileUtils.mkdir_p(dir)
+          cert = File.join(dir, 'ca.crt')
+          begin
+            FileUtils.link(@ca_cert_file, cert, force: true)
+          rescue Errno::EEXIST => e
+            # FileUtils.link with force=true deletes the file before linking. That leaves a race
+            # condition where two calls to FileUtils.link try to link after the file has been
+            # deleted. One will error with EEXIST, which shouldn't be an issue - presumably both
+            # jobs use a valid cert - but we log it in case it causes unforeseen problems.
+            @logger.log("Another job updated #{cert}")
+          end
+        end
       end
     end
 
@@ -367,10 +398,18 @@ class CD4PEJobRunner < Object
     run_system_cmd(cmd_to_execute)
   end
 
+  def get_docker_pull_cmd
+    if @docker_pull_config.nil?
+      "docker pull #{@docker_image}"
+    else
+      "docker --config #{@docker_pull_config} pull #{@docker_image}"
+    end
+  end
+
   def update_docker_image
     if (@docker_based_job)
       @logger.log("Updating docker image: #{@docker_image}")
-      result = run_system_cmd("docker pull #{@docker_image}")
+      result = run_system_cmd(get_docker_pull_cmd)
       @logger.log(result[:message])
     end
   end
@@ -471,6 +510,7 @@ if __FILE__ == $0 # This block will only be invoked if this file is executed. Wi
 
     docker_image = params['docker_image']
     docker_run_args = params["docker_run_args"]
+    docker_pull_creds = params['docker_pull_creds']
     job_instance_id = params["job_instance_id"]
     web_ui_endpoint = params['cd4pe_web_ui_endpoint']
     job_token = params['cd4pe_token']
@@ -484,7 +524,18 @@ if __FILE__ == $0 # This block will only be invoked if this file is executed. Wi
     @working_dir = File.join(root_job_dir, "cd4pe_job_instance_#{job_instance_id}_#{DateTime.now.strftime('%Q')}")
     make_dir(@working_dir)
 
-    job_runner = CD4PEJobRunner.new(working_dir: @working_dir, docker_image: docker_image, docker_run_args: docker_run_args, job_token: job_token, web_ui_endpoint: web_ui_endpoint, job_owner: job_owner, job_instance_id: job_instance_id, base_64_ca_cert: base_64_ca_cert, windows_job: windows_job, logger: @logger)
+    job_runner = CD4PEJobRunner.new(
+      working_dir: @working_dir,
+      docker_image: docker_image,
+      docker_run_args: docker_run_args,
+      docker_pull_creds: docker_pull_creds,
+      job_token: job_token,
+      web_ui_endpoint: web_ui_endpoint,
+      job_owner: job_owner,
+      job_instance_id: job_instance_id,
+      base_64_ca_cert: base_64_ca_cert,
+      windows_job: windows_job,
+      logger: @logger)
     job_runner.get_job_script_and_control_repo
     job_runner.update_docker_image
     output = job_runner.run_job
@@ -494,7 +545,8 @@ if __FILE__ == $0 # This block will only be invoked if this file is executed. Wi
     
     exit get_combined_exit_code(output)
   rescue => e
-    @logger.log(e.message)
+    # Write to stderr because job_runner may not be setup and send_job_output_to_cd4pe captures the error.
+    STDERR.puts(e.message)
     job_runner.send_job_output_to_cd4pe({ status: 'failure', error: e.message, logs: @logger.get_logs })  
     exit 1
   ensure
