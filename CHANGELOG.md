@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 No unreleased changes.
 
+## [1.4.0](https://github.com/puppetlabs/puppetlabs-cd4pe_jobs/tree/1.4.0)
+
+### Added
+
+- Added the ability to include registry credentials when pulling the Docker image.
+- Added the ability to trust registries that use the same CA as CD4PE when pulling the Docker image.
+
 ## [1.3.0](https://github.com/puppetlabs/puppetlabs-cd4pe_jobs/tree/1.3.0)
 
 ### Added
