@@ -35,6 +35,10 @@
       "description": "Base64-encoded docker config.json to use when pulling the specified docker image.",
       "sensitive": true
     },
+    "base_64_registry_ca_cert": {
+      "type": "Optional[String[1]]",
+      "description": "Ca cert needed to communicate with a private Docker Registry."
+    },
     "base_64_ca_cert": {
       "type": "Optional[String[1]]",
       "description": "Ca cert needed to communicate with CD4PE if ssl is enabled."

@@ -184,6 +184,22 @@ describe 'run_cd4pe_job' do
         expect(File.exists?(cert_file)).to be(true)
         expect(File.read(cert_file)).to eq(cert_txt)
       end
+
+      it 'Writes the Registry CA cert when provided.' do
+        job_helper = CD4PEJobRunner.new(working_dir: @working_dir, docker_image: test_docker_image, docker_pull_creds: creds_b64, base_64_registry_ca_cert: cert_b64, job_token: @job_token, web_ui_endpoint: @web_ui_endpoint, job_owner: @job_owner, job_instance_id: @job_instance_id, logger: @logger)
+
+        cert_file = File.join(@certs_dir, hostname, 'ca.crt')
+        expect(File.exists?(cert_file)).to be(true)
+        expect(File.read(cert_file)).to eq(cert_txt)
+      end
+
+      it 'Prefers the Registry CA cert when provided.' do
+        job_helper = CD4PEJobRunner.new(working_dir: @working_dir, docker_image: test_docker_image, docker_pull_creds: creds_b64, base_64_registry_ca_cert: cert_b64, base_64_ca_cert: Base64.encode64("not it"), job_token: @job_token, web_ui_endpoint: @web_ui_endpoint, job_owner: @job_owner, job_instance_id: @job_instance_id, logger: @logger)
+
+        cert_file = File.join(@certs_dir, hostname, 'ca.crt')
+        expect(File.exists?(cert_file)).to be(true)
+        expect(File.read(cert_file)).to eq(cert_txt)
+      end
     end
   end
 

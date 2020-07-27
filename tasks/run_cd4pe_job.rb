@@ -192,7 +192,7 @@ class CD4PEJobRunner < Object
 
   DOCKER_CERTS = '/etc/docker/certs.d'
 
-  def initialize(working_dir:, job_token:, web_ui_endpoint:, job_owner:, job_instance_id:, logger:, windows_job: false, base_64_ca_cert: nil, docker_image: nil, docker_run_args: nil, docker_pull_creds: nil)
+  def initialize(working_dir:, job_token:, web_ui_endpoint:, job_owner:, job_instance_id:, logger:, windows_job: false, base_64_registry_ca_cert: nil, base_64_ca_cert: nil, docker_image: nil, docker_run_args: nil, docker_pull_creds: nil)
     @working_dir = working_dir
     @job_token = job_token
     @web_ui_endpoint = web_ui_endpoint
@@ -218,6 +218,15 @@ class CD4PEJobRunner < Object
       end
     end
 
+    @registry_ca_cert_file = nil
+    if (!base_64_registry_ca_cert.nil?)
+      ca_cert = Base64.decode64(base_64_registry_ca_cert)
+      @registry_ca_cert_file = File.join(@working_dir, "registry-ca.crt")
+      open(@registry_ca_cert_file, "wb") do |file|
+        file.write(ca_cert)
+      end
+    end
+
     @docker_pull_config = nil
     if (!docker_pull_creds.nil?)
       creds = Base64.decode64(docker_pull_creds)
@@ -228,14 +237,16 @@ class CD4PEJobRunner < Object
       end
 
       # Ensure the ca_cert_file is added for each Docker registry we might use.
-      if @ca_cert_file
+      # Prefer Registry CA cert if specified, fallback to CD4PE CA cert.
+      ca_cert_file = @registry_ca_cert_file || @ca_cert_file
+      if ca_cert_file
         docker_conf = JSON.parse(creds)
         docker_conf['auths'].each do |host, _cred|
           dir = File.join(DOCKER_CERTS, host)
           FileUtils.mkdir_p(dir)
           cert = File.join(dir, 'ca.crt')
           begin
-            FileUtils.link(@ca_cert_file, cert, force: true)
+            FileUtils.link(ca_cert_file, cert, force: true)
           rescue Errno::EEXIST => e
             # FileUtils.link with force=true deletes the file before linking. That leaves a race
             # condition where two calls to FileUtils.link try to link after the file has been
@@ -515,6 +526,7 @@ if __FILE__ == $0 # This block will only be invoked if this file is executed. Wi
     web_ui_endpoint = params['cd4pe_web_ui_endpoint']
     job_token = params['cd4pe_token']
     job_owner = params['cd4pe_job_owner']
+    base_64_registry_ca_cert = params['base_64_registry_ca_cert']
     base_64_ca_cert = params['base_64_ca_cert']
 
     set_job_env_vars(params)
@@ -533,6 +545,7 @@ if __FILE__ == $0 # This block will only be invoked if this file is executed. Wi
       web_ui_endpoint: web_ui_endpoint,
       job_owner: job_owner,
       job_instance_id: job_instance_id,
+      base_64_registry_ca_cert: base_64_registry_ca_cert,
       base_64_ca_cert: base_64_ca_cert,
       windows_job: windows_job,
       logger: @logger)
