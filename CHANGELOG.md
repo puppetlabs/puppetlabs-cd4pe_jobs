@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 No unreleased changes.
 
+## [1.5.0](https://github.com/puppetlabs/puppetlabs-cd4pe_jobs/tree/1.5.0)
+
+### Added
+
+- Added verbose logging for failed http requests.
+
 ## [1.4.0](https://github.com/puppetlabs/puppetlabs-cd4pe_jobs/tree/1.4.0)
 
 ### Added
