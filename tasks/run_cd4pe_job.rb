@@ -143,6 +143,7 @@ class CD4PEClient < Object
       attempts += 1
       begin
         @logger.log("cd4pe_client: requesting #{type} #{api_url} with read timeout: #{connection.read_timeout} seconds")
+        starttime = Time.now.getutc
         case type
         when :delete
           response = connection.delete(uri, headers)
@@ -160,13 +161,18 @@ class CD4PEClient < Object
       rescue Net::ReadTimeout => e
         @logger.log("Timed out at #{connection.read_timeout} seconds waiting for response.")
         raise e
+      rescue => e
+        @logger.log("Failed to #{type} #{api_url}. #{e.message}.")
+        raise e
+      ensure
+        endtime = Time.now.getutc
+        duration = endtime - starttime
+        @logger.log("Total request time: #{duration} seconds")
       end
 
       case response
       when Net::HTTPSuccess, Net::HTTPRedirection
         return response
-      when Net::HTTPNotFound, Net::HTTPServerError
-        raise "#{response.code} #{response.body}"
       when Net::HTTPInternalServerError
         if attempts < max_attempts # rubocop:disable Style/GuardClause
           @logger.log("Received #{response} error from #{api_url}, attempting to retry. (Attempt #{attempts} of #{max_attempts})")
@@ -175,7 +181,9 @@ class CD4PEClient < Object
           raise "Received #{attempts} server error responses from the CD4PE service at #{api_url}: #{response.code} #{response.body}"
         end
       else
-        return response
+        error = "Request error: #{response.code} #{response.body}"
+        @logger.log(error)
+        raise error
       end
     end
   end
@@ -276,16 +284,14 @@ class CD4PEJobRunner < Object
     client = CD4PEClient.new(web_ui_endpoint: job_instance_endpoint, job_token: @job_token, ca_cert_file: @ca_cert_file, logger: @logger)
     response = client.make_request(:get, job_instance_endpoint)
 
-    case response
-    when Net::HTTPNotFound
-      raise "Message: #{response.body}\nCode: #{response.code}"
-    when Net::HTTPServerError
-      raise "Unknown HTTP Error with code: #{response.code} and body #{response.body}"
-    end
-
     # write payload bytes to file
-    open(target_file, "wb") do |file|
-      file.write(response.body)
+    begin
+      open(target_file, "wb") do |file|
+        file.write(response.body)
+      end
+    rescue => e
+      @logger.log("Failed to write CD4PE repo/script payload response to local file. Error: #{e.message}")
+      raise e
     end
 
     # unzip file
@@ -293,8 +299,8 @@ class CD4PEJobRunner < Object
       @logger.log("Unzipping #{target_file} to #{@working_dir}")
       GZipHelper.unzip(target_file, @working_dir)
     rescue => e
-      error = "Failed to decompress CD4PE repo/script payload. This can occur if the downloaded file is not in gzip format, or if the endpoint hit returned nothing. Error: #{e.message}"
-      raise error
+      @logger.log("Failed to decompress CD4PE repo/script payload. This can occur if the downloaded file is not in gzip format, or if the endpoint hit returned nothing. Error: #{e.message}")
+      raise e
     end
 
     target_file
@@ -547,6 +553,7 @@ if __FILE__ == $0 # This block will only be invoked if this file is executed. Wi
   rescue => e
     # Write to stderr because job_runner may not be setup and send_job_output_to_cd4pe captures the error.
     STDERR.puts(e.message)
+    STDERR.puts(e.backtrace)
     job_runner.send_job_output_to_cd4pe({ status: 'failure', error: e.message, logs: @logger.get_logs })
     exit 1
   ensure
