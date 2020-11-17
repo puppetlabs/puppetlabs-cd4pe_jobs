@@ -243,7 +243,7 @@ class CD4PEJobRunner < Object
           FileUtils.mkdir_p(dir)
           cert = File.join(dir, 'ca.crt')
           begin
-            FileUtils.link(@ca_cert_file, cert, force: true)
+            FileUtils.ln_s(@ca_cert_file, cert, force: true)
           rescue Errno::EEXIST => e
             # FileUtils.link with force=true deletes the file before linking. That leaves a race
             # condition where two calls to FileUtils.link try to link after the file has been
