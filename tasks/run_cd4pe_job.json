@@ -38,6 +38,11 @@
     "base_64_ca_cert": {
       "type": "Optional[String[1]]",
       "description": "Ca cert needed to communicate with CD4PE if ssl is enabled."
+    },
+    "secrets": {
+      "type": "Optional[Hash[String[1], String[1]]]",
+      "description": "Hash containing environment variables that should be set before running job script.",
+      "sensitive": true
     }
   },
 
