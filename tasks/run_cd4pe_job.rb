@@ -455,6 +455,8 @@ class CD4PEJobRunner < Object
   def scrub_secrets(cmd_output)
     return cmd_output if @secrets.nil? || @secrets.empty? || blank?(cmd_output)
 
+    @logger.log("Scrubbing secrets from job output.")
+
     redacted_value = "Sensitive [value redacted]"
 
     regex = @secrets.values.map do |value|
@@ -511,10 +513,13 @@ def set_job_env_vars(task_params)
     end
 end
 
-def set_job_secrets(secrets)
-  @logger.log("Setting job secrets.")
+def set_job_env_secrets(secrets)
+  if secrets.nil? || secrets.empty?
+    @logger.log("No job secrets found.")
+    return
+  end
 
-  return if secrets.nil?
+  @logger.log("Setting job secrets in the local environment.")
 
   secrets.each do |key, value|
     ENV[key] = value
@@ -561,7 +566,7 @@ if __FILE__ == $0 # This block will only be invoked if this file is executed. Wi
     secrets = params['secrets']
 
     set_job_env_vars(params)
-    set_job_secrets(secrets)
+    set_job_env_secrets(secrets)
 
     root_job_dir = File.join(Dir.pwd, 'cd4pe_job_working_dir')
     make_dir(root_job_dir)
