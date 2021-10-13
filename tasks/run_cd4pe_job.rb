@@ -453,18 +453,20 @@ class CD4PEJobRunner < Object
   end
 
   def scrub_secrets(cmd_output)
-    return cmd_output if @secrets.nil? || blank?(cmd_output)
+    return cmd_output if @secrets.nil? || @secrets.empty? || blank?(cmd_output)
 
     redacted_value = "Sensitive [value redacted]"
 
-    @secrets.reduce(cmd_output) do |memo, (key, value)|
+    regex = @secrets.values.map do |value|
       sanitized = value.gsub(/\n/, " ");
-      if sanitized == value
-        memo.gsub(value, redacted_value)
+      if (sanitized == value)
+        Regexp.quote(value)
       else
-        memo.gsub(value, redacted_value).gsub(sanitized, redacted_value)
+        [Regexp.quote(value), Regexp.quote(sanitized)]
       end
     end
+
+    cmd_output.gsub(/(#{regex.flatten.join("|")})/, redacted_value)
   end
 end
 
