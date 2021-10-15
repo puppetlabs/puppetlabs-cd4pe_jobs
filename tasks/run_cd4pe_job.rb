@@ -200,7 +200,7 @@ class CD4PEJobRunner < Object
 
   DOCKER_CERTS = '/etc/docker/certs.d'
 
-  def initialize(working_dir:, job_token:, web_ui_endpoint:, job_owner:, job_instance_id:, logger:, windows_job: false, base_64_ca_cert: nil, docker_image: nil, docker_run_args: nil, docker_pull_creds: nil)
+  def initialize(working_dir:, job_token:, web_ui_endpoint:, job_owner:, job_instance_id:, logger:, windows_job: false, base_64_ca_cert: nil, docker_image: nil, docker_run_args: nil, docker_pull_creds: nil, secrets:)
     @working_dir = working_dir
     @job_token = job_token
     @web_ui_endpoint = web_ui_endpoint
@@ -210,6 +210,7 @@ class CD4PEJobRunner < Object
     @docker_run_args = docker_run_args.nil? ? '' : docker_run_args.join(' ')
     @docker_based_job = !blank?(docker_image)
     @windows_job = windows_job
+    @secrets = secrets
 
     @logger = logger
 
@@ -424,7 +425,15 @@ class CD4PEJobRunner < Object
     repo_volume_mount = "\"#{@local_repo_dir}:/repo\""
     scripts_volume_mount = "\"#{@local_jobs_dir}:/cd4pe_job\""
     docker_bash_script = "\"/cd4pe_job/#{manifest_type}\""
-    "docker run --rm #{@docker_run_args} -v #{repo_volume_mount} -v #{scripts_volume_mount} #{@docker_image} #{docker_bash_script}"
+    "docker run --rm #{@docker_run_args} #{get_docker_secrets_cmd} -v #{repo_volume_mount} -v #{scripts_volume_mount} #{@docker_image} #{docker_bash_script}"
+  end
+
+  def get_docker_secrets_cmd
+    return "" if @secrets.nil?
+
+    @secrets.keys.reduce("") do |memo, key|
+      memo += "-e #{key} "
+    end
   end
 
   def run_with_docker(manifest_type)
@@ -440,11 +449,26 @@ class CD4PEJobRunner < Object
     output, wait_thr = Open3.capture2e(cmd)
     exit_code = wait_thr.exitstatus
 
-    { :exit_code => exit_code, :message => output }
+    { :exit_code => exit_code, :message => scrub_secrets(output) }
   end
 
-  def blank?(str)
-    str.nil? || str.empty?
+  def scrub_secrets(cmd_output)
+    return cmd_output if @secrets.nil? || @secrets.empty? || blank?(cmd_output)
+
+    @logger.log("Scrubbing secrets from job output.")
+
+    redacted_value = "Sensitive [value redacted]"
+
+    regex = @secrets.values.map do |value|
+      sanitized = value.gsub(/\n/, " ");
+      if (sanitized == value)
+        Regexp.quote(value)
+      else
+        [Regexp.quote(value), Regexp.quote(sanitized)]
+      end
+    end
+
+    cmd_output.gsub(/(#{regex.flatten.join("|")})/, redacted_value)
   end
 end
 
@@ -489,6 +513,19 @@ def set_job_env_vars(task_params)
     end
 end
 
+def set_job_env_secrets(secrets)
+  if secrets.nil? || secrets.empty?
+    @logger.log("No job secrets found.")
+    return
+  end
+
+  @logger.log("Setting job secrets in the local environment.")
+
+  secrets.each do |key, value|
+    ENV[key] = value
+  end
+end
+
 def make_dir(dir)
   @logger.log("Creating directory #{dir}")
   if (!File.exists?(dir))
@@ -502,6 +539,10 @@ end
 def delete_dir(dir)
   @logger.log("Deleting directory #{dir}")
   FileUtils.rm_rf(dir)
+end
+
+def blank?(str)
+  str.nil? || str.empty?
 end
 
 if __FILE__ == $0 # This block will only be invoked if this file is executed. Will NOT execute when 'required' (ie. for testing the contained classes)
@@ -522,8 +563,10 @@ if __FILE__ == $0 # This block will only be invoked if this file is executed. Wi
     job_token = params['cd4pe_token']
     job_owner = params['cd4pe_job_owner']
     base_64_ca_cert = params['base_64_ca_cert']
+    secrets = params['secrets']
 
     set_job_env_vars(params)
+    set_job_env_secrets(secrets)
 
     root_job_dir = File.join(Dir.pwd, 'cd4pe_job_working_dir')
     make_dir(root_job_dir)
@@ -541,6 +584,7 @@ if __FILE__ == $0 # This block will only be invoked if this file is executed. Wi
       job_instance_id: job_instance_id,
       base_64_ca_cert: base_64_ca_cert,
       windows_job: windows_job,
+      secrets: secrets,
       logger: @logger)
     job_runner.get_job_script_and_control_repo
     job_runner.update_docker_image
