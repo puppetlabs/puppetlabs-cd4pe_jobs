@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 No unreleased changes.
 
+## [1.6.0](https://github.com/puppetlabs/puppetlabs-cd4pe_jobs/tree/1.6.0)
+
+### Added
+
+- Added optional parameter for passing in secrets that should be set as environment variables before running the job script
+
 ## [1.5.0](https://github.com/puppetlabs/puppetlabs-cd4pe_jobs/tree/1.5.0)
 
 ### Added
