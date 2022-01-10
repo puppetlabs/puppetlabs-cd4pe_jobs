@@ -1,6 +1,7 @@
 require 'open3'
 require 'base64'
 require 'json'
+require 'fileutils'
 require_relative '../tasks/run_cd4pe_job.rb'
 
 describe 'run_cd4pe_job' do
@@ -21,6 +22,11 @@ describe 'run_cd4pe_job' do
     @job_token = 'alksjdbhfnadhsbf'
     @job_owner = 'carls cool carl'
     @job_instance_id = '17'
+    @secrets = {
+      secret1: "hello",
+      secret2: "friend",
+    }
+    @windows_job = ENV['RUN_WINDOWS_UNIT_TESTS']
   end
 
   after(:each) do
@@ -133,19 +139,19 @@ describe 'run_cd4pe_job' do
   end
 
   describe 'cd4pe_job_helper::initialize' do
-    it 'Passes the docker run args throug without modifying the structure.' do
+    it 'Passes the docker run args through without modifying the structure.' do
       arg1 = '--testarg=woot'
       arg2 = '--otherarg=hello'
       arg3 = '--whatever=isclever'
       user_specified_docker_run_args = [arg1, arg2, arg3]
   
-      job_helper = CD4PEJobRunner.new(working_dir: @working_dir, docker_run_args: user_specified_docker_run_args, job_token: @job_token, web_ui_endpoint: @web_ui_endpoint, job_owner: @job_owner, job_instance_id: @job_instance_id, logger: @logger)
+      job_helper = CD4PEJobRunner.new(windows_job: @windows_job, working_dir: @working_dir, docker_run_args: user_specified_docker_run_args, job_token: @job_token, web_ui_endpoint: @web_ui_endpoint, job_owner: @job_owner, job_instance_id: @job_instance_id, logger: @logger, secrets: @secrets)
   
       expect(job_helper.docker_run_args).to eq("#{arg1} #{arg2} #{arg3}")
     end
 
     it 'Sets the HOME and REPO_DIR env vars' do
-      job_helper = CD4PEJobRunner.new(working_dir: @working_dir, job_token: @job_token, web_ui_endpoint: @web_ui_endpoint, job_owner: @job_owner, job_instance_id: @job_instance_id, logger: @logger)
+      job_helper = CD4PEJobRunner.new(windows_job: @windows_job, working_dir: @working_dir, job_token: @job_token, web_ui_endpoint: @web_ui_endpoint, job_owner: @job_owner, job_instance_id: @job_instance_id, logger: @logger, secrets: @secrets)
 
       expect(ENV['HOME'] != nil).to be(true)
       expect(ENV['REPO_DIR']).to eq("#{@working_dir}/cd4pe_job/repo")
@@ -155,7 +161,7 @@ describe 'run_cd4pe_job' do
   describe 'cd4pe_job_helper::update_docker_image' do
     let(:test_docker_image) { 'puppetlabs/test:10.0.1' }
     it 'Generates a docker pull command.' do
-      job_helper = CD4PEJobRunner.new(working_dir: @working_dir, docker_image: test_docker_image, job_token: @job_token, web_ui_endpoint: @web_ui_endpoint, job_owner: @job_owner, job_instance_id: @job_instance_id, logger: @logger)
+      job_helper = CD4PEJobRunner.new(windows_job: @windows_job, working_dir: @working_dir, docker_image: test_docker_image, job_token: @job_token, web_ui_endpoint: @web_ui_endpoint, job_owner: @job_owner, job_instance_id: @job_instance_id, logger: @logger, secrets: @secrets)
       docker_pull_command = job_helper.get_docker_pull_cmd
       expect(docker_pull_command).to eq("docker pull #{test_docker_image}")
     end
@@ -168,7 +174,7 @@ describe 'run_cd4pe_job' do
       let(:cert_b64) { Base64.encode64(cert_txt) }
 
       it 'Uses config when present.' do
-        job_helper = CD4PEJobRunner.new(working_dir: @working_dir, docker_image: test_docker_image, docker_pull_creds: creds_b64, job_token: @job_token, web_ui_endpoint: @web_ui_endpoint, job_owner: @job_owner, job_instance_id: @job_instance_id, logger: @logger)
+        job_helper = CD4PEJobRunner.new(windows_job: @windows_job, working_dir: @working_dir, docker_image: test_docker_image, docker_pull_creds: creds_b64, job_token: @job_token, web_ui_endpoint: @web_ui_endpoint, job_owner: @job_owner, job_instance_id: @job_instance_id, logger: @logger, secrets: @secrets)
         config_json = File.join(@working_dir, '.docker', 'config.json')
         expect(File.exists?(config_json)).to be(true)
         expect(File.read(config_json)).to eq(creds_json)
@@ -178,7 +184,7 @@ describe 'run_cd4pe_job' do
       end
 
       it 'Registers the CA cert when provided.' do
-        job_helper = CD4PEJobRunner.new(working_dir: @working_dir, docker_image: test_docker_image, docker_pull_creds: creds_b64, base_64_ca_cert: cert_b64, job_token: @job_token, web_ui_endpoint: @web_ui_endpoint, job_owner: @job_owner, job_instance_id: @job_instance_id, logger: @logger)
+        job_helper = CD4PEJobRunner.new(windows_job: @windows_job, working_dir: @working_dir, docker_image: test_docker_image, docker_pull_creds: creds_b64, base_64_ca_cert: cert_b64, job_token: @job_token, web_ui_endpoint: @web_ui_endpoint, job_owner: @job_owner, job_instance_id: @job_instance_id, logger: @logger, secrets: @secrets)
 
         cert_file = File.join(@certs_dir, hostname, 'ca.crt')
         expect(File.exists?(cert_file)).to be(true)
@@ -195,8 +201,9 @@ describe 'run_cd4pe_job' do
       arg2 = '--otherarg=hello'
       arg3 = '--whatever=doesntmatter'
       user_specified_docker_run_args = [arg1, arg2, arg3]
+      job_type = @windows_job ? 'windows' : 'unix'
   
-      job_helper = CD4PEJobRunner.new(working_dir: @working_dir, docker_image: test_docker_image, docker_run_args: user_specified_docker_run_args, job_token: @job_token, web_ui_endpoint: @web_ui_endpoint, job_owner: @job_owner, job_instance_id: @job_instance_id, logger: @logger)
+      job_helper = CD4PEJobRunner.new(windows_job: @windows_job, working_dir: @working_dir, docker_image: test_docker_image, docker_run_args: user_specified_docker_run_args, job_token: @job_token, web_ui_endpoint: @web_ui_endpoint, job_owner: @job_owner, job_instance_id: @job_instance_id, logger: @logger, secrets: @secrets)
   
       docker_run_command = job_helper.get_docker_run_cmd(test_manifest_type)
       cmd_parts = docker_run_command.split(' ')
@@ -207,12 +214,16 @@ describe 'run_cd4pe_job' do
       expect(cmd_parts[3]).to eq(arg1)
       expect(cmd_parts[4]).to eq(arg2)
       expect(cmd_parts[5]).to eq(arg3)
-      expect(cmd_parts[6]).to eq('-v')
-      expect(cmd_parts[7].end_with?("/#{File.basename(@working_dir)}/cd4pe_job/repo:/repo\"")).to be(true)
-      expect(cmd_parts[8]).to eq('-v')
-      expect(cmd_parts[9].end_with?("/#{File.basename(@working_dir)}/cd4pe_job/jobs/unix:/cd4pe_job\"")).to be(true)
-      expect(cmd_parts[10]).to eq(test_docker_image)
-      expect(cmd_parts[11]).to eq('"/cd4pe_job/AFTER_JOB_SUCCESS"')
+      expect(cmd_parts[6]).to eq('-e')
+      expect(cmd_parts[7]).to eq('secret1')
+      expect(cmd_parts[8]).to eq('-e')
+      expect(cmd_parts[9]).to eq('secret2')
+      expect(cmd_parts[10]).to eq('-v')
+      expect(cmd_parts[11].end_with?("/#{File.basename(@working_dir)}/cd4pe_job/repo:/repo\"")).to be(true)
+      expect(cmd_parts[12]).to eq('-v')
+      expect(cmd_parts[13].end_with?("/#{File.basename(@working_dir)}/cd4pe_job/jobs/#{job_type}:/cd4pe_job\"")).to be(true)
+      expect(cmd_parts[14]).to eq(test_docker_image)
+      expect(cmd_parts[15]).to eq('"/cd4pe_job/AFTER_JOB_SUCCESS"')
     end
   end
 end
@@ -224,15 +235,23 @@ describe 'cd4pe_job_helper::run_job' do
     @working_dir = File.join(Dir.getwd, "test_working_dir")
     cd4pe_job_dir = File.join(@working_dir, 'cd4pe_job')
     jobs_dir = File.join(cd4pe_job_dir, 'jobs')
-    unix_dir = File.join(jobs_dir, 'unix')
-    @job_script = File.join(unix_dir, 'JOB')
-    @after_job_success_script = File.join(unix_dir, 'AFTER_JOB_SUCCESS')
-    @after_job_failure_script = File.join(unix_dir, 'AFTER_JOB_FAILURE')
+    os_dir = File.join(jobs_dir, 'unix')
+    @job_script = File.join(os_dir, 'JOB')
+    @after_job_success_script = File.join(os_dir, 'AFTER_JOB_SUCCESS')
+    @after_job_failure_script = File.join(os_dir, 'AFTER_JOB_FAILURE')
+
+    @windows_job = ENV['RUN_WINDOWS_UNIT_TESTS']
+    if @windows_job
+      os_dir = File.join(jobs_dir, 'windows')
+      @job_script = File.join(os_dir, 'JOB.ps1')
+      @after_job_success_script = File.join(os_dir, 'AFTER_JOB_SUCCESS.ps1')
+      @after_job_failure_script = File.join(os_dir, 'AFTER_JOB_FAILURE.ps1')
+    end
 
     Dir.mkdir(@working_dir)
     Dir.mkdir(cd4pe_job_dir)
     Dir.mkdir(jobs_dir)
-    Dir.mkdir(unix_dir)
+    Dir.mkdir(os_dir)
 
     File.write(@job_script, '')
     File.chmod(0775, @job_script)
@@ -252,10 +271,10 @@ describe 'cd4pe_job_helper::run_job' do
     expected_output = 'in job script'
     after_job_success_message = 'in after success script'
 
-    File.write(@job_script, "echo #{expected_output}")
-    File.write(@after_job_success_script, "echo #{after_job_success_message}")
+    File.write(@job_script, "echo \"#{expected_output}\"")
+    File.write(@after_job_success_script, "echo \"#{after_job_success_message}\"")
 
-    job_helper = CD4PEJobRunner.new(working_dir: @working_dir, job_token: @job_token, web_ui_endpoint: @web_ui_endpoint, job_owner: @job_owner, job_instance_id: @job_instance_id, logger: @logger)
+    job_helper = CD4PEJobRunner.new(windows_job: @windows_job, working_dir: @working_dir, job_token: @job_token, web_ui_endpoint: @web_ui_endpoint, job_owner: @job_owner, job_instance_id: @job_instance_id, logger: @logger, secrets: @secrets)
     output = job_helper.run_job
 
     expect(output[:job][:exit_code]).to eq(0)
@@ -268,59 +287,40 @@ describe 'cd4pe_job_helper::run_job' do
   it 'Runs the failure script after a failed script run' do
     $stdout = StringIO.new
 
-    expected_output = 'this gonna fail'
-    after_job_failure_message = 'in after failure script'
-    File.write(@job_script, expected_output)
-    File.write(@after_job_failure_script, "echo #{after_job_failure_message}")
+    if @windows_job
+      after_job_failure_message = 'in after failure script'
+      File.write(@job_script, "$ErrorActionPreference = 'Stop'; this command does not exist")
+      File.write(@after_job_failure_script, "echo \"#{after_job_failure_message}\"")
+  
+      job_helper = CD4PEJobRunner.new(windows_job: @windows_job, working_dir: @working_dir, job_token: @job_token, web_ui_endpoint: @web_ui_endpoint, job_owner: @job_owner, job_instance_id: @job_instance_id, logger: @logger, secrets: @secrets)
+      output = job_helper.run_job
+  
+      expect(output[:job][:exit_code]).to eq(1)
+      expect(output[:job][:message].start_with?("this : The term 'this' is not recognized as the name of a cmdlet")).to be(true)
+      expect(output[:after_job_failure][:exit_code]).to eq(0)
+      expect(output[:after_job_failure][:message]).to eq("#{after_job_failure_message}\n")
+    else
+      after_job_failure_message = 'in after failure script'
+      File.write(@job_script, "this command does not exist")
+      File.write(@after_job_failure_script, "echo \"#{after_job_failure_message}\"")
+  
+      job_helper = CD4PEJobRunner.new(windows_job: @windows_job, working_dir: @working_dir, job_token: @job_token, web_ui_endpoint: @web_ui_endpoint, job_owner: @job_owner, job_instance_id: @job_instance_id, logger: @logger, secrets: @secrets)
+      output = job_helper.run_job
+  
+      expect(output[:job][:exit_code]).to eq(127)
+      expect(output[:job][:message].end_with?("command not found\n")).to be(true)
+      expect(output[:after_job_failure][:exit_code]).to eq(0)
+      expect(output[:after_job_failure][:message]).to eq("#{after_job_failure_message}\n")
+    end
 
-    job_helper = CD4PEJobRunner.new(working_dir: @working_dir, job_token: @job_token, web_ui_endpoint: @web_ui_endpoint, job_owner: @job_owner, job_instance_id: @job_instance_id, logger: @logger)
-    output = job_helper.run_job
-
-    expect(output[:job][:exit_code]).to eq(127)
-    expect(output[:job][:message].end_with?("command not found\n")).to be(true)
-    expect(output[:after_job_failure][:exit_code]).to eq(0)
-    expect(output[:after_job_failure][:message]).to eq("#{after_job_failure_message}\n")
-  end
-
-  it 'Runs the windows script when windows_job == true' do
-    $stdout = StringIO.new
-
-    expected_output = 'in job script'
-    after_job_success_message = 'in after success script'
-
-    File.write(@job_script, "echo #{expected_output}")
-    File.write(@after_job_success_script, "echo #{after_job_success_message}")
-
-    job_helper = CD4PEJobRunner.new(working_dir: @working_dir, job_token: @job_token, web_ui_endpoint: @web_ui_endpoint, job_owner: @job_owner, job_instance_id: @job_instance_id, windows_job: true, logger: @logger)
-    output = job_helper.run_job
-
-    expect(output[:job][:exit_code]).to eq(127)
-    expect(output[:job][:message]).to eq("sh: powershell: command not found\n")
-
-  end
-
-  it 'Runs the windows script (and followup windows script) when windows_job == true' do
-    $stdout = StringIO.new
-
-    expected_output = 'in job script'
-    after_job_success_message = 'in after success script'
-
-    File.write(@job_script, "echo #{expected_output}")
-    File.write(@after_job_success_script, "echo #{after_job_success_message}")
-
-    job_helper = CD4PEJobRunner.new(working_dir: @working_dir, job_token: @job_token, web_ui_endpoint: @web_ui_endpoint, job_owner: @job_owner, job_instance_id: @job_instance_id, windows_job: true, logger: @logger)
-    output = job_helper.run_job
-
-    expect(output[:job][:exit_code]).to eq(127)
-    expect(output[:job][:message]).to eq("sh: powershell: command not found\n")
-    expect(output[:job][:exit_code]).to eq(127)
-    expect(output[:job][:message]).to eq("sh: powershell: command not found\n")
+    
   end
 end
 
 
 describe 'cd4pe_job_helper::unzip' do
   before(:all) do
+    @windows_job = ENV['RUN_WINDOWS_UNIT_TESTS']
     @working_dir = File.join(Dir.getwd, 'test_working_dir')
     @test_tar_files_dir = File.join(Dir.getwd, 'spec', 'fixtures', 'test_tar_files')
     Dir.mkdir(@working_dir)
@@ -391,7 +391,14 @@ describe 'cd4pe_job_helper::unzip' do
 
   it 'maintains file permissions when extracting' do
     executable_tar = File.join(@test_tar_files_dir, 'executableFileTest.tar.gz')
-    executable = File.join(@working_dir, 'executableFileTest')
+    executable = File.join(@working_dir, "executableFileTest")
+
+    if @windows_job
+      executable_tar = File.join(@test_tar_files_dir, 'executableWindowsFileTest.tar.gz')
+      filePath = File.join(@working_dir, "windows", "executableWindowsFileTest.ps1")
+      executable = "powershell \"& {&'#{filePath}'}\""
+    end
+
     GZipHelper.unzip(executable_tar, @working_dir)
 
     output = ''
