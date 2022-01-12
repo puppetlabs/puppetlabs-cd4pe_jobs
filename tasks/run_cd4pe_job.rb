@@ -132,7 +132,7 @@ class CD4PEClient < Object
 
     headers = {
       'Content-Type' => 'application/json',
-      'Authorization' => "Bearer token #{@job_token}",
+      'Authorization' => @job_token,
     }
     uri = URI.parse(api_url)
 
