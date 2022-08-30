@@ -4,7 +4,7 @@
   "author": "puppetlabs",
   "summary": "Contains Bolt task to facilitate running of CD4PE jobs.",
   "license": "proprietary",
-  "source": "https://github.com/puppetlabs/cd4pe_jobs",
+  "source": "https://github.com/puppetlabs/puppetlabs-cd4pe_jobs",
   "dependencies": [],
   "operatingsystem_support": [
     {
