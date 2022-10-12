@@ -522,7 +522,13 @@ def set_job_env_secrets(secrets)
   @logger.log("Setting job secrets in the local environment.")
 
   secrets.each do |key, value|
+    @logger.log("Interpolation:")
+    @logger.log("#{value}")
+    @logger.log("Raw")
+    @logger.log(value)
+    @logger.log("From ENV")
     ENV[key] = value
+    @logger.log(ENV[key])
   end
 end
 
