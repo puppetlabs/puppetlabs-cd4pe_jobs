@@ -358,9 +358,9 @@ class CD4PEJobRunner < Object
     # if a AFTER_JOB_SUCCESS or AFTER_JOB_FAILURE script exists, run it now!
     run_followup_script = false
     if (@windows_job)
-      run_followup_script = File.exists?(File.join(@local_jobs_dir, "#{next_manifest_type}.ps1"))
+      run_followup_script = File.exist?(File.join(@local_jobs_dir, "#{next_manifest_type}.ps1"))
     else
-      run_followup_script = File.exists?(File.join(@local_jobs_dir, next_manifest_type))
+      run_followup_script = File.exist?(File.join(@local_jobs_dir, next_manifest_type))
     end
 
     if (run_followup_script)
@@ -528,7 +528,7 @@ end
 
 def make_dir(dir)
   @logger.log("Creating directory #{dir}")
-  if (!File.exists?(dir))
+  if (!File.exist?(dir))
     Dir.mkdir(dir)
     @logger.log("Successfully created directory: #{dir}")
   else

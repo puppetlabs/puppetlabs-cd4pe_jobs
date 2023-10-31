@@ -5,7 +5,7 @@ require 'fileutils'
 require_relative '../tasks/run_cd4pe_job.rb'
 
 describe 'run_cd4pe_job' do
-  before(:all) do 
+  before(:all) do
     @logger = Logger.new
   end
 
@@ -41,7 +41,7 @@ describe 'run_cd4pe_job' do
       params = { 'env_vars' => user_specified_env_vars }
 
       set_job_env_vars(params)
-      
+
       expect(ENV['TEST_VAR_ONE']).to eq('hello!')
       expect(ENV['TEXT_VAR_TWO']).to eq('yellow-bird')
       expect(ENV['TEST_VAR_THREE']).to eq('carl')
@@ -52,11 +52,11 @@ describe 'run_cd4pe_job' do
     it 'Makes working directory as specified.' do
       # validate dir does not exist
       test_dir = File.join(@working_dir, 'test_dir')
-      expect(File.exists?(test_dir)).to be(false)
+      expect(File.exist?(test_dir)).to be(false)
 
       # create dir and validate it exists
       make_dir(test_dir)
-      expect(File.exists?(test_dir)).to be(true)
+      expect(File.exist?(test_dir)).to be(true)
 
       # attempt to create again to validate it does not throw
       make_dir(test_dir)
@@ -144,9 +144,9 @@ describe 'run_cd4pe_job' do
       arg2 = '--otherarg=hello'
       arg3 = '--whatever=isclever'
       user_specified_docker_run_args = [arg1, arg2, arg3]
-  
+
       job_helper = CD4PEJobRunner.new(windows_job: @windows_job, working_dir: @working_dir, docker_run_args: user_specified_docker_run_args, job_token: @job_token, web_ui_endpoint: @web_ui_endpoint, job_owner: @job_owner, job_instance_id: @job_instance_id, logger: @logger, secrets: @secrets)
-  
+
       expect(job_helper.docker_run_args).to eq("#{arg1} #{arg2} #{arg3}")
     end
 
@@ -176,7 +176,7 @@ describe 'run_cd4pe_job' do
       it 'Uses config when present.' do
         job_helper = CD4PEJobRunner.new(windows_job: @windows_job, working_dir: @working_dir, docker_image: test_docker_image, docker_pull_creds: creds_b64, job_token: @job_token, web_ui_endpoint: @web_ui_endpoint, job_owner: @job_owner, job_instance_id: @job_instance_id, logger: @logger, secrets: @secrets)
         config_json = File.join(@working_dir, '.docker', 'config.json')
-        expect(File.exists?(config_json)).to be(true)
+        expect(File.exist?(config_json)).to be(true)
         expect(File.read(config_json)).to eq(creds_json)
 
         docker_pull_command = job_helper.get_docker_pull_cmd
@@ -187,7 +187,7 @@ describe 'run_cd4pe_job' do
         job_helper = CD4PEJobRunner.new(windows_job: @windows_job, working_dir: @working_dir, docker_image: test_docker_image, docker_pull_creds: creds_b64, base_64_ca_cert: cert_b64, job_token: @job_token, web_ui_endpoint: @web_ui_endpoint, job_owner: @job_owner, job_instance_id: @job_instance_id, logger: @logger, secrets: @secrets)
 
         cert_file = File.join(@certs_dir, hostname, 'ca.crt')
-        expect(File.exists?(cert_file)).to be(true)
+        expect(File.exist?(cert_file)).to be(true)
         expect(File.read(cert_file)).to eq(cert_txt)
       end
     end
@@ -202,12 +202,12 @@ describe 'run_cd4pe_job' do
       arg3 = '--whatever=doesntmatter'
       user_specified_docker_run_args = [arg1, arg2, arg3]
       job_type = @windows_job ? 'windows' : 'unix'
-  
+
       job_helper = CD4PEJobRunner.new(windows_job: @windows_job, working_dir: @working_dir, docker_image: test_docker_image, docker_run_args: user_specified_docker_run_args, job_token: @job_token, web_ui_endpoint: @web_ui_endpoint, job_owner: @job_owner, job_instance_id: @job_instance_id, logger: @logger, secrets: @secrets)
-  
+
       docker_run_command = job_helper.get_docker_run_cmd(test_manifest_type)
       cmd_parts = docker_run_command.split(' ')
-  
+
       expect(cmd_parts[0]).to eq('docker')
       expect(cmd_parts[1]).to eq('run')
       expect(cmd_parts[2]).to eq('--rm')
@@ -291,10 +291,10 @@ describe 'cd4pe_job_helper::run_job' do
       after_job_failure_message = 'in after failure script'
       File.write(@job_script, "$ErrorActionPreference = 'Stop'; this command does not exist")
       File.write(@after_job_failure_script, "echo \"#{after_job_failure_message}\"")
-  
+
       job_helper = CD4PEJobRunner.new(windows_job: @windows_job, working_dir: @working_dir, job_token: @job_token, web_ui_endpoint: @web_ui_endpoint, job_owner: @job_owner, job_instance_id: @job_instance_id, logger: @logger, secrets: @secrets)
       output = job_helper.run_job
-  
+
       expect(output[:job][:exit_code]).to eq(1)
       expect(output[:job][:message].start_with?("this : The term 'this' is not recognized as the name of a cmdlet")).to be(true)
       expect(output[:after_job_failure][:exit_code]).to eq(0)
@@ -303,17 +303,17 @@ describe 'cd4pe_job_helper::run_job' do
       after_job_failure_message = 'in after failure script'
       File.write(@job_script, "this command does not exist")
       File.write(@after_job_failure_script, "echo \"#{after_job_failure_message}\"")
-  
+
       job_helper = CD4PEJobRunner.new(windows_job: @windows_job, working_dir: @working_dir, job_token: @job_token, web_ui_endpoint: @web_ui_endpoint, job_owner: @job_owner, job_instance_id: @job_instance_id, logger: @logger, secrets: @secrets)
       output = job_helper.run_job
-  
+
       expect(output[:job][:exit_code]).to eq(127)
       expect(output[:job][:message].end_with?("command not found\n")).to be(true)
       expect(output[:after_job_failure][:exit_code]).to eq(0)
       expect(output[:after_job_failure][:message]).to eq("#{after_job_failure_message}\n")
     end
 
-    
+
   end
 end
 
@@ -335,7 +335,7 @@ describe 'cd4pe_job_helper::unzip' do
     single_file = File.join(@working_dir, 'gzipSingleFileTest')
     GZipHelper.unzip(single_file_tar, @working_dir)
 
-    expect(File.exists?(single_file)).to be(true)
+    expect(File.exist?(single_file)).to be(true)
 
     file_data =  File.read(single_file)
     expect(file_data).to eql('test data')
@@ -346,11 +346,11 @@ describe 'cd4pe_job_helper::unzip' do
     single_level_dir = File.join(@working_dir, 'gzipSingleLevelDirectoryTest')
     GZipHelper.unzip(single_level_dir_tar, @working_dir)
 
-    expect(File.exists?(single_level_dir)).to be(true)
+    expect(File.exist?(single_level_dir)).to be(true)
     test_file_1 = File.join(single_level_dir, 'testFile1')
     test_file_2 = File.join(single_level_dir, 'testFile2')
-    expect(File.exists?(test_file_1)).to be(true)
-    expect(File.exists?(test_file_2)).to be(true)
+    expect(File.exist?(test_file_1)).to be(true)
+    expect(File.exist?(test_file_2)).to be(true)
 
     file_1_data =  File.read(test_file_1)
     file_2_data =  File.read(test_file_2)
@@ -365,11 +365,11 @@ describe 'cd4pe_job_helper::unzip' do
     GZipHelper.unzip(multi_level_dir_tar, @working_dir)
 
     # root dir
-    expect(File.exists?(multi_level_dir)).to be(true)
+    expect(File.exist?(multi_level_dir)).to be(true)
     root_file_1 = File.join(multi_level_dir, 'rootFile1')
     root_file_2 = File.join(multi_level_dir, 'rootFile2')
-    expect(File.exists?(root_file_1)).to be(true)
-    expect(File.exists?(root_file_2)).to be(true)
+    expect(File.exist?(root_file_1)).to be(true)
+    expect(File.exist?(root_file_2)).to be(true)
 
     root_file_1_data =  File.read(root_file_1)
     root_file_2_data =  File.read(root_file_2)
@@ -377,11 +377,11 @@ describe 'cd4pe_job_helper::unzip' do
     expect(root_file_2_data).to eql('I am in root 2!')
 
     # sub dir
-    expect(File.exists?(sub_dir)).to be(true)
+    expect(File.exist?(sub_dir)).to be(true)
     sub_file_1 = File.join(sub_dir, 'subDirFile1')
     sub_file_2 = File.join(sub_dir, 'subDirFile2')
-    expect(File.exists?(sub_file_1)).to be(true)
-    expect(File.exists?(sub_file_2)).to be(true)
+    expect(File.exist?(sub_file_1)).to be(true)
+    expect(File.exist?(sub_file_2)).to be(true)
 
     sub_file_1_data =  File.read(sub_file_1)
     sub_file_2_data =  File.read(sub_file_2)
@@ -403,7 +403,7 @@ describe 'cd4pe_job_helper::unzip' do
 
     output = ''
     exit_code = 0
-  
+
     Open3.popen2e(executable) do |stdin, stdout_stderr, wait_thr|
       exit_code = wait_thr.value.exitstatus
       output = stdout_stderr.read
@@ -418,9 +418,9 @@ describe 'cd4pe_job_helper::unzip' do
     single_level_dir = File.join(@working_dir, 'long_file_name')
     GZipHelper.unzip(single_level_dir_tar, @working_dir)
 
-    expect(File.exists?(single_level_dir)).to be(true)
+    expect(File.exist?(single_level_dir)).to be(true)
     test_file_1 = File.join(single_level_dir, 'IAMASUPERLONGFILENAMEIAMASUPERLONGFILENAMEIAMASUPERLONGFILENAMEIAMASUPERLONGFILENAMEIAMASUPERLONGFILENAMEIAMASUPERLONGFILENAMEIAMASUPERLONGFILENAMEIAMASUPERLONGFILENAMEIAMASUPE')
-    expect(File.exists?(test_file_1)).to be(true)
+    expect(File.exist?(test_file_1)).to be(true)
   end
 
 end
