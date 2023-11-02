@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 No unreleased changes.
 
+## [1.6.1](https://github.com/puppetlabs/puppetlabs-cd4pe_jobs/tree/1.6.1)
+
+### Fixed
+- Updated module to use File#exist? instead of deprecated (and removed in Ruby 3.2.0/Puppet 8) File#exists?
+
 ## [1.6.0](https://github.com/puppetlabs/puppetlabs-cd4pe_jobs/tree/1.6.0)
 
 ### Added
