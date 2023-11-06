@@ -7,9 +7,9 @@ To run tests (from root of repo):
 
 ## Release puppetlabs-cd4pe_jobs
 
-1. Create a branch off `master` using the following convention:
+1. Create a branch off `main` using the following convention:
 ```shell
-git checkout -b 1.6.0-release
+git swtich -c 1.6.0-release
 ```
 2. On the new branch, update CHANGELOG.md with any changes in this release and metadata.json with the new version number.
 3. Commit these changes
@@ -21,5 +21,5 @@ git tag -a 1.6.0 -m "1.6.0"
 ```shell
 git push origin 1.6.0-release --follow-tags
 ```   
-6. Run `pdk build` in the root of the module to get the new tarball
+6. Run `pdk build --force` in the root of the module to get the new tarball
 7. Log into https://forge.puppet.com as 'puppetlabs' and publish the new module version
