@@ -23,3 +23,4 @@ git push origin 1.6.0-release --follow-tags
 ```   
 6. Run `pdk build` in the root of the module to get the new tarball
 7. Log into https://forge.puppet.com as 'puppetlabs' and publish the new module version
+8. Update the ref in PE: https://github.com/puppetlabs/pe-tasks-vanagon/blob/main/configs/components/puppetlabs-cd4pe_jobs.json. This will ensure that the new version is shipped with the next PE release.
