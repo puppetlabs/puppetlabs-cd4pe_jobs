@@ -7,7 +7,7 @@ To run tests (from root of repo):
 
 ## Release puppetlabs-cd4pe_jobs
 
-1. Create a branch off `main` using the following convention:
+1. Create a branch off `master` using the following convention:
 ```shell
 git checkout -b 1.6.0-release
 ```
