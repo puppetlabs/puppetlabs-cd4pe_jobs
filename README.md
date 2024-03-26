@@ -11,16 +11,17 @@ To run tests (from root of repo):
 ```shell
 git checkout -b 1.6.0-release
 ```
-2. On the new branch, update CHANGELOG.md with any changes in this release and metadata.json with the new version number.
-3. Commit these changes
-4. Tag the new branch with the new version number
+2. On a new branch based on the release branch, update CHANGELOG.md with any changes in this release and metadata.json with the new version number.
+3. Commit these changes and put up a PR against the release branch you created in Step 1 and get review.
+4. Once the changes have been approved and merged to the release branch, pull down the updated release branch and tag the module.
 ```shell
 git tag -a 1.6.0 -m "1.6.0"
 ```
-5. Push your changes to origin for PR review and merge
-```shell
-git push origin 1.6.0-release --follow-tags
-```   
-6. Run `pdk build` in the root of the module to get the new tarball
+6. Run `pdk build --force` in the root of the module to get the new tarball. The `force` flag is required because this module is not fully compatible with modern PDK versions, and we don't want the PDK to attempt to convert anything. This is the same thing we do with the `cd4peadm` module.
 7. Log into https://forge.puppet.com as 'puppetlabs' and publish the new module version
 8. Update the ref in PE: https://github.com/puppetlabs/pe-tasks-vanagon/blob/main/configs/components/puppetlabs-cd4pe_jobs.json. This will ensure that the new version is shipped with the next PE release.
+9. Push your new tag up to the repo
+```shell
+git push --tags
+```
+10. Make a PR from the release branch back to `master`. Once this is merged the release branch should be deleted.
