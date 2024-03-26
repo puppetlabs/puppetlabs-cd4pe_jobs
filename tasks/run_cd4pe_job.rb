@@ -29,6 +29,7 @@ class GZipHelper
   # static class to decompress tar.gz files
   TAR_LONGLINK = '././@LongLink'.freeze
   SYMLINK_SYMBOL = '2'.freeze
+  PAX_HEADER = 'x'.freeze
 
   def self.unzip(zipped_file_path, destination_path)
     # helper functions
@@ -53,6 +54,10 @@ class GZipHelper
     Gem::Package::TarReader.new( Zlib::GzipReader.open zipped_file_path ) do |tar|
       dest = nil
       tar.each do |entry|
+        # skip 'PaxHeaders.X' entries as they interfere with the TAR_LONGLINK logic
+        if entry.header.typeflag == PAX_HEADER
+          next
+        end
 
         # If file/dir name length > 100 chars, its broken into multiple entries.
         # This code glues the name back together

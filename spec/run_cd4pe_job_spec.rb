@@ -423,4 +423,14 @@ describe 'cd4pe_job_helper::unzip' do
     expect(File.exist?(test_file_1)).to be(true)
   end
 
+  it 'unzips a file with PAX Headers' do
+    single_level_dir_tar = File.join(@test_tar_files_dir, 'with_pax_headers.tar.gz')
+    single_level_dir = File.join(@working_dir, 'cd4pe_job')
+    GZipHelper.unzip(single_level_dir_tar, @working_dir)
+
+    expect(File.exist?(single_level_dir)).to be(true)
+    test_file_1 = File.join(single_level_dir, '/repo/manifests/controls/rhel_8/v3_0_0/access_authentication_and_authorization/configure_jobs_for_testing_is_this_File_path_too_long_to_unzip_i_am_not_sure_what_if_it_is_too_long.pp')
+    expect(File.exist?(test_file_1)).to be(true)
+  end
+
 end
