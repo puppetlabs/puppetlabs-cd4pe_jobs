@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 No unreleased changes.
 
+## [1.6.2](https://github.com/puppetlabs/puppetlabs-cd4pe_jobs/tree/1.6.2)
+
+### Fixed
+- Fixed issue in tarball unpacking where pax header lines were causing some long filenames to be truncated.
+
+
 ## [1.6.1](https://github.com/puppetlabs/puppetlabs-cd4pe_jobs/tree/1.6.1)
 
 ### Fixed
