@@ -1,6 +1,6 @@
 {
   "name": "puppetlabs-cd4pe_jobs",
-  "version": "1.6.2",
+  "version": "1.6.3",
   "author": "puppetlabs",
   "summary": "Contains Bolt task to facilitate running of CD4PE jobs.",
   "license": "proprietary",
