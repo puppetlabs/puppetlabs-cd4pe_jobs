@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 No unreleased changes.
 
-## [1.6.3]
+## [1.6.3](https://github.com/puppetlabs/puppetlabs-cd4pe_jobs/tree/1.6.3)
 
 ### Fixed
 - Fixed misleading Puppet version requirements accidentally released in 1.6.2.
