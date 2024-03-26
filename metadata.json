@@ -5,39 +5,74 @@
   "summary": "Contains Bolt task to facilitate running of CD4PE jobs.",
   "license": "proprietary",
   "source": "https://github.com/puppetlabs/puppetlabs-cd4pe_jobs",
-  "dependencies": [],
+  "project_page": "https://github.com/puppetlabs/puppetlabs-cd4pe_jobs",
+  "dependencies": [
+
+  ],
   "operatingsystem_support": [
     {
       "operatingsystem": "RedHat",
-      "operatingsystemrelease": ["5", "6", "7", "8"]
+      "operatingsystemrelease": [
+        "5",
+        "6",
+        "7",
+        "8"
+      ]
     },
     {
       "operatingsystem": "CentOS",
-      "operatingsystemrelease": ["5", "6", "7", "8"]
+      "operatingsystemrelease": [
+        "5",
+        "6",
+        "7",
+        "8"
+      ]
     },
     {
       "operatingsystem": "OracleLinux",
-      "operatingsystemrelease": ["5", "6", "7"]
+      "operatingsystemrelease": [
+        "5",
+        "6",
+        "7"
+      ]
     },
     {
       "operatingsystem": "Scientific",
-      "operatingsystemrelease": ["6", "7"]
+      "operatingsystemrelease": [
+        "6",
+        "7"
+      ]
     },
     {
       "operatingsystem": "SLES",
-      "operatingsystemrelease": ["11", "12", "15"]
+      "operatingsystemrelease": [
+        "11",
+        "12",
+        "15"
+      ]
     },
     {
       "operatingsystem": "Debian",
-      "operatingsystemrelease": ["8", "9", "10"]
+      "operatingsystemrelease": [
+        "8",
+        "9",
+        "10"
+      ]
     },
     {
       "operatingsystem": "Ubuntu",
-      "operatingsystemrelease": ["14.04", "16.04", "18.04"]
+      "operatingsystemrelease": [
+        "14.04",
+        "16.04",
+        "18.04"
+      ]
     },
     {
       "operatingsystem": "Solaris",
-      "operatingsystemrelease": ["10", "11"]
+      "operatingsystemrelease": [
+        "10",
+        "11"
+      ]
     },
     {
       "operatingsystem": "Windows",
@@ -55,10 +90,17 @@
     },
     {
       "operatingsystem": "AIX",
-      "operatingsystemrelease": ["5.3", "6.1", "7.1"]
+      "operatingsystemrelease": [
+        "5.3",
+        "6.1",
+        "7.1"
+      ]
     }
   ],
-  "pdk-version": "1.16.0",
-  "template-url": "pdk-default#1.16.0",
-  "template-ref": "tags/1.16.0-0-gaf44904"
+  "requirements": [
+    {
+      "name": "puppet",
+      "version_requirement": ">= 7.24 < 9.0.0"
+    }
+  ]
 }
