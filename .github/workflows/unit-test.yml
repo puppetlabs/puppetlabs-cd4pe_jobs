@@ -2,6 +2,36 @@ name: unit-test
 on:
   - pull_request
 jobs:
+  podman_tests:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v2
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: 2.6
+          bundler-cache: true # runs 'bundle install' and caches installed gems automatically
+      - name: Uninstall docker
+        run: |
+          sudo apt-get update
+          sudo apt-get remove -y docker-ce
+      - name: Install podman
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y podman
+      - run: bundle exec rspec spec/podman_spec.rb
+  docker_tests:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v2
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: 2.6
+          bundler-cache: true # runs 'bundle install' and caches installed gems automatically
+      - name: Uninstall podman
+        run: |
+          sudo apt-get update
+          sudo apt-get remove -y podman
+      - run: bundle exec rspec spec/docker_spec.rb
   unix_tests:
     runs-on: macos-latest
     steps:
@@ -10,7 +40,7 @@ jobs:
         with:
           ruby-version: 2.6
           bundler-cache: true # runs 'bundle install' and caches installed gems automatically
-      - run: bundle exec rspec spec
+      - run: bundle exec rspec spec/run_cd4pe_job_spec.rb
   windows_tests:
     runs-on: windows-latest
     steps:
@@ -19,4 +49,4 @@ jobs:
         with:
           ruby-version: 2.6
           bundler-cache: true # runs 'bundle install' and caches installed gems automatically
-      - run: $env:RUN_WINDOWS_UNIT_TESTS = "true"; bundle exec rspec spec
+      - run: $env:RUN_WINDOWS_UNIT_TESTS = "true"; bundle exec rspec spec/run_cd4pe_job_spec.rb

@@ -204,20 +204,23 @@ class CD4PEJobRunner < Object
     :AFTER_JOB_FAILURE => "AFTER_JOB_FAILURE" }
 
   DOCKER_CERTS = '/etc/docker/certs.d'
+  PODMAN_CERTS = '/etc/containers/certs.d'
 
   def initialize(working_dir:, job_token:, web_ui_endpoint:, job_owner:, job_instance_id:, logger:, windows_job: false, base_64_ca_cert: nil, docker_image: nil, docker_run_args: nil, docker_pull_creds: nil, secrets:)
+    @logger = logger
+    @image_repo = nil
+    @docker_image = docker_image
+    @docker_run_args = docker_run_args.nil? ? '' : docker_run_args.join(' ')
+    @docker_based_job = !blank?(docker_image)
+    @windows_job = windows_job
+    @runtime = get_runtime
+    @cert_dir = @runtime == 'podman' ? PODMAN_CERTS : DOCKER_CERTS
     @working_dir = working_dir
     @job_token = job_token
     @web_ui_endpoint = web_ui_endpoint
     @job_owner = job_owner
     @job_instance_id = job_instance_id
-    @docker_image = docker_image
-    @docker_run_args = docker_run_args.nil? ? '' : docker_run_args.join(' ')
-    @docker_based_job = !blank?(docker_image)
-    @windows_job = windows_job
     @secrets = secrets
-
-    @logger = logger
 
     job_dir_name = windows_job ? "windows" : "unix"
     @local_jobs_dir = File.join(@working_dir, "cd4pe_job", "jobs", job_dir_name)
@@ -235,6 +238,8 @@ class CD4PEJobRunner < Object
     @docker_pull_config = nil
     if (!docker_pull_creds.nil?)
       creds = Base64.decode64(docker_pull_creds)
+      # podman-login manpage states it uses `.docker/config.json`, so this
+      # applies to both runtimes
       @docker_pull_config = File.join(@working_dir, ".docker")
       make_dir(@docker_pull_config)
       open(File.join(@docker_pull_config, "config.json"), "wb") do |file|
@@ -245,7 +250,7 @@ class CD4PEJobRunner < Object
       if @ca_cert_file
         docker_conf = JSON.parse(creds)
         docker_conf['auths'].each do |host, _cred|
-          dir = File.join(DOCKER_CERTS, host)
+          dir = File.join(@cert_dir, host)
           FileUtils.mkdir_p(dir)
           cert = File.join(dir, 'ca.crt')
           begin
@@ -384,10 +389,10 @@ class CD4PEJobRunner < Object
     @logger.log("Executing #{manifest_type} manifest.")
     result = {}
     if (@docker_based_job)
-      @logger.log("Docker image specified. Running #{manifest_type} manifest on docker image: #{@docker_image}.")
+      @logger.log("Container image specified. Running #{manifest_type} manifest on container image: #{@docker_image}.")
       result = run_with_docker(manifest_type)
     else
-      @logger.log("No docker image specified. Running #{manifest_type} manifest directly on machine.")
+      @logger.log("No container image specified. Running #{manifest_type} manifest directly on machine.")
       result = run_with_system(manifest_type)
     end
 
@@ -411,26 +416,34 @@ class CD4PEJobRunner < Object
   end
 
   def get_docker_pull_cmd
+    image = @image_repo.nil? ? @docker_image : "#{@image_repo}/#{@docker_image}"
     if @docker_pull_config.nil?
-      "docker pull #{@docker_image}"
+      "#{@runtime} pull #{image}"
     else
-      "docker --config #{@docker_pull_config} pull #{@docker_image}"
+      "#{@runtime} --config #{@docker_pull_config} pull #{image}"
     end
   end
 
   def update_docker_image
     if (@docker_based_job)
-      @logger.log("Updating docker image: #{@docker_image}")
+      @logger.log("Updating container image: #{@docker_image}")
       result = run_system_cmd(get_docker_pull_cmd)
+      if (result[:exit_code] == 125)
+        @logger.log("Failed to pull using given image name. Re-try directly from docker.io.")
+        @image_repo = 'docker.io'
+        result = run_system_cmd(get_docker_pull_cmd)
+      end
+
       @logger.log(result[:message])
     end
   end
 
   def get_docker_run_cmd(manifest_type)
-    repo_volume_mount = "\"#{@local_repo_dir}:/repo\""
-    scripts_volume_mount = "\"#{@local_jobs_dir}:/cd4pe_job\""
+    suffix = @runtime == 'podman' ? ':z' : ''
+    repo_volume_mount = "\"#{@local_repo_dir}:/repo#{suffix}\""
+    scripts_volume_mount = "\"#{@local_jobs_dir}:/cd4pe_job#{suffix}\""
     docker_bash_script = "\"/cd4pe_job/#{manifest_type}\""
-    "docker run --rm #{@docker_run_args} #{get_docker_secrets_cmd} -v #{repo_volume_mount} -v #{scripts_volume_mount} #{@docker_image} #{docker_bash_script}"
+    "#{@runtime} run --rm #{@docker_run_args} #{get_docker_secrets_cmd} -v #{repo_volume_mount} -v #{scripts_volume_mount} #{@docker_image} #{docker_bash_script}"
   end
 
   def get_docker_secrets_cmd
@@ -441,16 +454,44 @@ class CD4PEJobRunner < Object
     end
   end
 
+  def get_runtime
+    if !@docker_based_job
+      return nil
+    end
+
+    if !ENV['RUNTIME_OVERRIDE'].nil?
+      @logger.log("Runtime override detected. Using '#{ENV['RUNTIME_OVERRIDE']}' as runtime.")
+      return ENV['RUNTIME_OVERRIDE']
+    end
+
+    # Try to detect podman first to avoid the possibility that the podman-docker
+    # shim is installed. If the shim is present, we will find podman first and use it
+    # directly.
+    begin
+      result = run_system_cmd('podman --version', false)
+      @logger.log("Podman runtime detected. Use 'RUNTIME_OVERRIDE' environment variable to override.")
+      return 'podman'
+    rescue Errno::ENOENT => e
+      begin
+        result = run_system_cmd('docker --version', false)
+        @logger.log("Docker runtime detected. Use 'RUNTIME_OVERRIDE' environment variable to override.")
+        return 'docker'
+      rescue Errno::ENOENT => e
+        raise("Configured for containerized run, but no container runtime detected. Ensure docker or podman is available in the PATH.")
+      end
+    end
+  end
+
   def run_with_docker(manifest_type)
     docker_cmd = get_docker_run_cmd(manifest_type)
     run_system_cmd(docker_cmd)
   end
 
-  def run_system_cmd(cmd)
+  def run_system_cmd(cmd, log_output = true)
     output = ''
     exit_code = 0
 
-    @logger.log("Executing system command: #{cmd}")
+    @logger.log("Executing system command: #{cmd}") unless !log_output
     output, wait_thr = Open3.capture2e(cmd)
     exit_code = wait_thr.exitstatus
 
