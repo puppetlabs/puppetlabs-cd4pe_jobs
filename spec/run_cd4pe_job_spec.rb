@@ -139,15 +139,15 @@ describe 'run_cd4pe_job' do
   end
 
   describe 'cd4pe_job_helper::initialize' do
-    it 'Passes the docker run args through without modifying the structure.' do
+    it 'Passes the container run args through without modifying the structure.' do
       arg1 = '--testarg=woot'
       arg2 = '--otherarg=hello'
       arg3 = '--whatever=isclever'
-      user_specified_docker_run_args = [arg1, arg2, arg3]
+      user_specified_container_run_args = [arg1, arg2, arg3]
 
-      job_helper = CD4PEJobRunner.new(windows_job: @windows_job, working_dir: @working_dir, docker_run_args: user_specified_docker_run_args, job_token: @job_token, web_ui_endpoint: @web_ui_endpoint, job_owner: @job_owner, job_instance_id: @job_instance_id, logger: @logger, secrets: @secrets)
+      job_helper = CD4PEJobRunner.new(windows_job: @windows_job, working_dir: @working_dir, container_run_args: user_specified_container_run_args, job_token: @job_token, web_ui_endpoint: @web_ui_endpoint, job_owner: @job_owner, job_instance_id: @job_instance_id, logger: @logger, secrets: @secrets)
 
-      expect(job_helper.docker_run_args).to eq("#{arg1} #{arg2} #{arg3}")
+      expect(job_helper.container_run_args).to eq("#{arg1} #{arg2} #{arg3}")
     end
 
     it 'Sets the HOME and REPO_DIR env vars' do
