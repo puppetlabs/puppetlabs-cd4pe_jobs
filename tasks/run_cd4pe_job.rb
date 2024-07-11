@@ -196,7 +196,7 @@ end
 
 class CD4PEJobRunner < Object
   # Class for downloading, running, and logging CD4PE jobs
-  attr_reader :docker_run_args
+  attr_reader :container_run_args
 
   MANIFEST_TYPE = {
     :JOB => "JOB",
@@ -204,20 +204,23 @@ class CD4PEJobRunner < Object
     :AFTER_JOB_FAILURE => "AFTER_JOB_FAILURE" }
 
   DOCKER_CERTS = '/etc/docker/certs.d'
+  PODMAN_CERTS = '/etc/containers/certs.d'
 
-  def initialize(working_dir:, job_token:, web_ui_endpoint:, job_owner:, job_instance_id:, logger:, windows_job: false, base_64_ca_cert: nil, docker_image: nil, docker_run_args: nil, docker_pull_creds: nil, secrets:)
+  def initialize(working_dir:, job_token:, web_ui_endpoint:, job_owner:, job_instance_id:, logger:, windows_job: false, base_64_ca_cert: nil, container_image: nil, container_run_args: nil, image_pull_creds: nil, secrets:)
+    @logger = logger
+    @image_repo = nil
+    @container_image = container_image
+    @container_run_args = container_run_args.nil? ? '' : container_run_args.join(' ')
+    @containerized_job = !blank?(container_image)
+    @windows_job = windows_job
+    @runtime = get_runtime
+    @cert_dir = @runtime == 'podman' ? PODMAN_CERTS : DOCKER_CERTS
     @working_dir = working_dir
     @job_token = job_token
     @web_ui_endpoint = web_ui_endpoint
     @job_owner = job_owner
     @job_instance_id = job_instance_id
-    @docker_image = docker_image
-    @docker_run_args = docker_run_args.nil? ? '' : docker_run_args.join(' ')
-    @docker_based_job = !blank?(docker_image)
-    @windows_job = windows_job
     @secrets = secrets
-
-    @logger = logger
 
     job_dir_name = windows_job ? "windows" : "unix"
     @local_jobs_dir = File.join(@working_dir, "cd4pe_job", "jobs", job_dir_name)
@@ -232,20 +235,22 @@ class CD4PEJobRunner < Object
       end
     end
 
-    @docker_pull_config = nil
-    if (!docker_pull_creds.nil?)
-      creds = Base64.decode64(docker_pull_creds)
-      @docker_pull_config = File.join(@working_dir, ".docker")
-      make_dir(@docker_pull_config)
-      open(File.join(@docker_pull_config, "config.json"), "wb") do |file|
+    @image_pull_config = nil
+    if (!image_pull_creds.nil?)
+      creds = Base64.decode64(image_pull_creds)
+      # podman-login manpage states it uses `.docker/config.json`, so this
+      # applies to both runtimes
+      @image_pull_config = File.join(@working_dir, ".docker")
+      make_dir(@image_pull_config)
+      open(File.join(@image_pull_config, "config.json"), "wb") do |file|
         file.write(creds)
       end
 
-      # Ensure the ca_cert_file is added for each Docker registry we might use.
+      # Ensure the ca_cert_file is added for each registry we might use.
       if @ca_cert_file
-        docker_conf = JSON.parse(creds)
-        docker_conf['auths'].each do |host, _cred|
-          dir = File.join(DOCKER_CERTS, host)
+        runtime_conf = JSON.parse(creds)
+        runtime_conf['auths'].each do |host, _cred|
+          dir = File.join(@cert_dir, host)
           FileUtils.mkdir_p(dir)
           cert = File.join(dir, 'ca.crt')
           begin
@@ -383,11 +388,11 @@ class CD4PEJobRunner < Object
   def execute_manifest(manifest_type)
     @logger.log("Executing #{manifest_type} manifest.")
     result = {}
-    if (@docker_based_job)
-      @logger.log("Docker image specified. Running #{manifest_type} manifest on docker image: #{@docker_image}.")
-      result = run_with_docker(manifest_type)
+    if (@containerized_job)
+      @logger.log("Container image specified. Running #{manifest_type} manifest on container image: #{@container_image}.")
+      result = run_in_container(manifest_type)
     else
-      @logger.log("No docker image specified. Running #{manifest_type} manifest directly on machine.")
+      @logger.log("No container image specified. Running #{manifest_type} manifest directly on machine.")
       result = run_with_system(manifest_type)
     end
 
@@ -410,30 +415,38 @@ class CD4PEJobRunner < Object
     run_system_cmd(cmd_to_execute)
   end
 
-  def get_docker_pull_cmd
-    if @docker_pull_config.nil?
-      "docker pull #{@docker_image}"
+  def get_image_pull_cmd
+    image = @image_repo.nil? ? @container_image : "#{@image_repo}/#{@container_image}"
+    if @image_pull_config.nil?
+      "#{@runtime} pull #{image}"
     else
-      "docker --config #{@docker_pull_config} pull #{@docker_image}"
+      "#{@runtime} --config #{@image_pull_config} pull #{image}"
     end
   end
 
-  def update_docker_image
-    if (@docker_based_job)
-      @logger.log("Updating docker image: #{@docker_image}")
-      result = run_system_cmd(get_docker_pull_cmd)
+  def update_container_image
+    if (@containerized_job)
+      @logger.log("Updating container image: #{@container_image}")
+      result = run_system_cmd(get_image_pull_cmd)
+      if (result[:exit_code] == 125)
+        @logger.log("Failed to pull using given image name. Re-try directly from docker.io.")
+        @image_repo = 'docker.io'
+        result = run_system_cmd(get_image_pull_cmd)
+      end
+
       @logger.log(result[:message])
     end
   end
 
-  def get_docker_run_cmd(manifest_type)
-    repo_volume_mount = "\"#{@local_repo_dir}:/repo\""
-    scripts_volume_mount = "\"#{@local_jobs_dir}:/cd4pe_job\""
-    docker_bash_script = "\"/cd4pe_job/#{manifest_type}\""
-    "docker run --rm #{@docker_run_args} #{get_docker_secrets_cmd} -v #{repo_volume_mount} -v #{scripts_volume_mount} #{@docker_image} #{docker_bash_script}"
+  def get_container_run_cmd(manifest_type)
+    suffix = @runtime == 'podman' ? ':z' : ''
+    repo_volume_mount = "\"#{@local_repo_dir}:/repo#{suffix}\""
+    scripts_volume_mount = "\"#{@local_jobs_dir}:/cd4pe_job#{suffix}\""
+    container_bash_script = "\"/cd4pe_job/#{manifest_type}\""
+    "#{@runtime} run --rm #{@container_run_args} #{get_container_secrets_cmd} -v #{repo_volume_mount} -v #{scripts_volume_mount} #{@container_image} #{container_bash_script}"
   end
 
-  def get_docker_secrets_cmd
+  def get_container_secrets_cmd
     return "" if @secrets.nil?
 
     @secrets.keys.reduce("") do |memo, key|
@@ -441,16 +454,44 @@ class CD4PEJobRunner < Object
     end
   end
 
-  def run_with_docker(manifest_type)
-    docker_cmd = get_docker_run_cmd(manifest_type)
-    run_system_cmd(docker_cmd)
+  def get_runtime
+    if !@containerized_job
+      return nil
+    end
+
+    if !ENV['RUNTIME_OVERRIDE'].nil?
+      @logger.log("Runtime override detected. Using '#{ENV['RUNTIME_OVERRIDE']}' as runtime.")
+      return ENV['RUNTIME_OVERRIDE']
+    end
+
+    # Try to detect podman first to avoid the possibility that the podman-docker
+    # shim is installed. If the shim is present, we will find podman first and use it
+    # directly.
+    begin
+      result = run_system_cmd('podman --version', false)
+      @logger.log("Podman runtime detected. Use 'RUNTIME_OVERRIDE' environment variable to override.")
+      return 'podman'
+    rescue Errno::ENOENT => e
+      begin
+        result = run_system_cmd('docker --version', false)
+        @logger.log("Docker runtime detected. Use 'RUNTIME_OVERRIDE' environment variable to override.")
+        return 'docker'
+      rescue Errno::ENOENT => e
+        raise("Configured for containerized run, but no container runtime detected. Ensure docker or podman is available in the PATH.")
+      end
+    end
   end
 
-  def run_system_cmd(cmd)
+  def run_in_container(manifest_type)
+    cmd = get_container_run_cmd(manifest_type)
+    run_system_cmd(cmd)
+  end
+
+  def run_system_cmd(cmd, log_output = true)
     output = ''
     exit_code = 0
 
-    @logger.log("Executing system command: #{cmd}")
+    @logger.log("Executing system command: #{cmd}") unless !log_output
     output, wait_thr = Open3.capture2e(cmd)
     exit_code = wait_thr.exitstatus
 
@@ -560,9 +601,9 @@ if __FILE__ == $0 # This block will only be invoked if this file is executed. Wi
 
     params = JSON.parse(STDIN.read)
 
-    docker_image = params['docker_image']
-    docker_run_args = params["docker_run_args"]
-    docker_pull_creds = params['docker_pull_creds']
+    container_image = params['docker_image']
+    container_run_args = params["docker_run_args"]
+    image_pull_creds = params['docker_pull_creds']
     job_instance_id = params["job_instance_id"]
     web_ui_endpoint = params['cd4pe_web_ui_endpoint']
     job_token = params['cd4pe_token']
@@ -580,9 +621,9 @@ if __FILE__ == $0 # This block will only be invoked if this file is executed. Wi
 
     job_runner = CD4PEJobRunner.new(
       working_dir: @working_dir,
-      docker_image: docker_image,
-      docker_run_args: docker_run_args,
-      docker_pull_creds: docker_pull_creds,
+      container_image: container_image,
+      container_run_args: container_run_args,
+      image_pull_creds: image_pull_creds,
       job_token: job_token,
       web_ui_endpoint: web_ui_endpoint,
       job_owner: job_owner,
@@ -592,7 +633,7 @@ if __FILE__ == $0 # This block will only be invoked if this file is executed. Wi
       secrets: secrets,
       logger: @logger)
     job_runner.get_job_script_and_control_repo
-    job_runner.update_docker_image
+    job_runner.update_container_image
     output = job_runner.run_job
 
     output[:logs] = @logger.get_logs
