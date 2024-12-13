@@ -292,7 +292,7 @@ class CD4PEJobRunner < Object
     # download payload bytes
     api_endpoint = File.join(@web_ui_endpoint, @job_owner, 'getJobScriptAndControlRepo')
     job_instance_endpoint = "#{api_endpoint}?jobInstanceId=#{@job_instance_id}"
-    @logger.log("cert is @ca_cert_file")
+    @logger.log("cert is #{@ca_cert_file}")
     client = CD4PEClient.new(web_ui_endpoint: job_instance_endpoint, job_token: @job_token, ca_cert_file: @ca_cert_file, logger: @logger)
     response = client.make_request(:get, job_instance_endpoint)
 
