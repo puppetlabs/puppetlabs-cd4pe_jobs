@@ -123,7 +123,7 @@ class CD4PEClient < Object
   def make_request(type, api_url, payload = '')
     connection = Net::HTTP.new(@http_config[:server], @http_config[:port])
     if @http_config[:scheme] == 'https'
-      connection.use_ssl = false
+      connection.use_ssl = true
       connection.verify_mode = OpenSSL::SSL::VERIFY_PEER
       if !@ca_cert_file.nil?
         store = OpenSSL::X509::Store.new
@@ -231,6 +231,7 @@ class CD4PEJobRunner < Object
       ca_cert = Base64.decode64(base_64_ca_cert)
       @ca_cert_file = File.join(@working_dir, "ca.crt")
       open(@ca_cert_file, "wb") do |file|
+        @logger.log("cert actually is #{cert}")
         file.write(ca_cert)
       end
     end
