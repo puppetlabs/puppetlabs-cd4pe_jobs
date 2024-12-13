@@ -231,7 +231,7 @@ class CD4PEJobRunner < Object
       ca_cert = Base64.decode64(base_64_ca_cert)
       @ca_cert_file = File.join(@working_dir, "ca.crt")
       open(@ca_cert_file, "wb") do |file|
-        @logger.log("cert actually is #{cert}")
+        @logger.log("cert actually is #{ca_cert}")
         file.write(ca_cert)
       end
     end
