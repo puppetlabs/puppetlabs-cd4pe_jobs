@@ -124,7 +124,7 @@ class CD4PEClient < Object
     connection = Net::HTTP.new(@http_config[:server], @http_config[:port])
     if @http_config[:scheme] == 'https'
       connection.use_ssl = true
-      connection.verify_mode = OpenSSL::SSL::VERIFY_PEER
+      connection.verify_mode = OpenSSL::SSL::VERIFY_NONE
       if !@ca_cert_file.nil?
         store = OpenSSL::X509::Store.new
         store.set_default_paths
