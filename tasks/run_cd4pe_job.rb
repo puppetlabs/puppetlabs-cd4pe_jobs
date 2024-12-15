@@ -411,7 +411,7 @@ class CD4PEJobRunner < Object
 
     cmd_to_execute = local_job_script
     if (@windows_job)
-      cmd_to_execute = "powershell \"& {&'#{local_job_script}'}\""
+      cmd_to_execute = "& {&'#{local_job_script}'; exit $LASTEXITCODE}"
     end
 
     run_system_cmd(cmd_to_execute)
