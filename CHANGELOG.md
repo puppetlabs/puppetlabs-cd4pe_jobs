@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 No unreleased changes.
 
+## [1.7.1](https://github.com/puppetlabs/puppetlabs-cd4pe_jobs/tree/1.7.1)
+
+### Fixed
+- Issue where jobs would report success even if the script returns 1 on Windows (Powershell)
+
 ## [1.7.0](https://github.com/puppetlabs/puppetlabs-cd4pe_jobs/tree/1.7.0)
 
 ### Added
