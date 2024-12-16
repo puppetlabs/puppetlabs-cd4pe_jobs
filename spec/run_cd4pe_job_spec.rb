@@ -246,6 +246,15 @@ describe 'cd4pe_job_helper::run_job' do
 
 
   end
+
+  it 'Fails the job if the job script fails' do
+    File.write(@job_script, "exit 1;")
+
+    job_helper = CD4PEJobRunner.new(windows_job: @windows_job, working_dir: @working_dir, job_token: @job_token, web_ui_endpoint: @web_ui_endpoint, job_owner: @job_owner, job_instance_id: @job_instance_id, logger: @logger, secrets: @secrets)
+    output = job_helper.run_job
+
+    expect(output[:job][:exit_code]).to eq(1)
+  end
 end
 
 

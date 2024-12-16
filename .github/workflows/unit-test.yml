@@ -6,6 +6,11 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v2
+      - name: install libcurl & libcurl4-openssl-dev
+        # these packages are required to build native extensions for the 'patron' gem
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libcurl4 libcurl4-openssl-dev
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: 2.6
@@ -23,6 +28,11 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v2
+      - name: install libcurl & libcurl4-openssl-dev
+        # these packages are required to build native extensions for the 'patron' gem
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libcurl4 libcurl4-openssl-dev
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: 2.6
