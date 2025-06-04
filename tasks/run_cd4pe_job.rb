@@ -633,7 +633,7 @@ if __FILE__ == $0 # This block will only be invoked if this file is executed. Wi
       secrets: secrets,
       logger: @logger)
     job_runner.get_job_script_and_control_repo
-    job_runner.update_container_image
+
     output = job_runner.run_job
 
     output[:logs] = @logger.get_logs
