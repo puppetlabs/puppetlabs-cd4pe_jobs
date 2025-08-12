@@ -435,6 +435,10 @@ class CD4PEJobRunner < Object
       end
 
       @logger.log(result[:message])
+
+      if (result[:exit_code] != 0)
+        @logger.log("Unable to update image #{@container_image}, falling back to local image.")
+      end
     end
   end
 
