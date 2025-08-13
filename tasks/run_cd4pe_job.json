@@ -1,4 +1,5 @@
 {
+  "private": true,
   "description": "Retrieves the Puppet control repo and job script for the specified job instance id.",
   "parameters": {
     "job_instance_id": {
