@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 No unreleased changes.
 
+## [1.7.2](https://github.com/puppetlabs/puppetlabs-cd4pe_jobs/tree/1.7.2)
+
+### Added
+- Added logging to indicate that when the image pull fails, the module will assume the image is present
+  locally and attempt to use that to run the job.
+
+### Fixed
+- The module's main task is now marked as private, since users are not expected to run it directly.
+
+
 ## [1.7.1](https://github.com/puppetlabs/puppetlabs-cd4pe_jobs/tree/1.7.1)
 
 ### Fixed
