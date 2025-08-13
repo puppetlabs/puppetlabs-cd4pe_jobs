@@ -24,3 +24,11 @@ git tag -a 1.7.0 -m "1.7.0"
 git push --tags
 ```
 9. Make a PR from the release branch back to `master`. Once this is merged the release branch should be deleted.
+
+## Note on branch names
+
+The default branch of this repo has been kept as `master` because there are lots
+of control repo fixtures floating around that reference this master branch, as a
+way of making sure that we are testing with the most up-to-date version of this
+module. Until we update those places, we need to continue calling the default
+branch `master`.
