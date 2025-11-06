@@ -1,11 +1,21 @@
 # frozen_string_literal: true
 
-require 'puppet_litmus/rake_tasks' if Bundler.rubygems.find_name('puppet_litmus').any?
+require 'bundler'
+require 'puppet_litmus/rake_tasks' if Gem.loaded_specs.key? 'puppet_litmus'
 require 'puppetlabs_spec_helper/rake_tasks'
 require 'puppet-syntax/tasks/puppet-syntax'
-require 'puppet_blacksmith/rake_tasks' if Bundler.rubygems.find_name('puppet-blacksmith').any?
+require 'puppet-strings/tasks' if Gem.loaded_specs.key? 'puppet-strings'
 require 'github_changelog_generator/task' if Bundler.rubygems.find_name('github_changelog_generator').any?
-require 'puppet-strings/tasks' if Bundler.rubygems.find_name('puppet-strings').any?
+
+PuppetLint.configuration.send('disable_relative')
+PuppetLint.configuration.send('disable_80chars')
+PuppetLint.configuration.send('disable_140chars')
+PuppetLint.configuration.send('disable_class_inherits_from_params_class')
+PuppetLint.configuration.send('disable_autoloader_layout')
+PuppetLint.configuration.send('disable_documentation')
+PuppetLint.configuration.send('disable_single_quote_string_with_variables')
+PuppetLint.configuration.fail_on_warnings = true
+PuppetLint.configuration.ignore_paths = [".vendor/**/*.pp", ".bundle/**/*.pp", "pkg/**/*.pp", "spec/**/*.pp", "tests/**/*.pp", "types/**/*.pp", "vendor/**/*.pp"]
 
 def changelog_user
   return unless Rake.application.top_level_tasks.include? "changelog"
@@ -39,8 +49,6 @@ def changelog_future_release
   puts "GitHubChangelogGenerator future_release:#{returnVal}"
   returnVal
 end
-
-PuppetLint.configuration.send('disable_relative')
 
 if Bundler.rubygems.find_name('github_changelog_generator').any?
   GitHubChangelogGenerator::RakeTask.new :changelog do |config|
@@ -85,4 +93,3 @@ Gemfile:
 EOM
   end
 end
-
