@@ -13,7 +13,7 @@ jobs:
           sudo apt-get install -y libcurl4 libcurl4-openssl-dev
       - uses: ruby/setup-ruby@v1
         with:
-          ruby-version: 2.6
+          ruby-version: 3.2
           bundler-cache: true # runs 'bundle install' and caches installed gems automatically
       - name: Uninstall docker
         run: |
@@ -23,7 +23,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y podman
-      - run: bundle exec rspec spec/podman_spec.rb
+      - run: bundle exec rspec spec/tasks/podman_spec.rb
   docker_tests:
     runs-on: ubuntu-22.04
     steps:
@@ -35,28 +35,28 @@ jobs:
           sudo apt-get install -y libcurl4 libcurl4-openssl-dev
       - uses: ruby/setup-ruby@v1
         with:
-          ruby-version: 2.6
+          ruby-version: 3.2
           bundler-cache: true # runs 'bundle install' and caches installed gems automatically
       - name: Uninstall podman
         run: |
           sudo apt-get update
           sudo apt-get remove -y podman
-      - run: bundle exec rspec spec/docker_spec.rb
+      - run: bundle exec rspec spec/tasks/docker_spec.rb
   unix_tests:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v2
       - uses: ruby/setup-ruby@v1
         with:
-          ruby-version: 2.6
+          ruby-version: 3.2
           bundler-cache: true # runs 'bundle install' and caches installed gems automatically
-      - run: bundle exec rspec spec/run_cd4pe_job_spec.rb
+      - run: bundle exec rspec spec/tasks/run_cd4pe_job_spec.rb
   windows_tests:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v2
       - uses: ruby/setup-ruby@v1
         with:
-          ruby-version: 2.6
+          ruby-version: 3.2
           bundler-cache: true # runs 'bundle install' and caches installed gems automatically
-      - run: $env:RUN_WINDOWS_UNIT_TESTS = "true"; bundle exec rspec spec/run_cd4pe_job_spec.rb
+      - run: $env:RUN_WINDOWS_UNIT_TESTS = "true"; bundle exec rspec spec/tasks/run_cd4pe_job_spec.rb
