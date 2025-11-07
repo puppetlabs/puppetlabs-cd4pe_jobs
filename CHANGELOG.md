@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 No unreleased changes.
 
+## [1.7.3](https://github.com/puppetlabs/puppetlabs-cd4pe_jobs/tree/1.7.3)
+
+### Fixed
+- The module's main task has been moved back to public to fix an issue with setting permissions to
+  run it in the PE console. Users are still not expected to run it directly, and the description
+  has been updated to reflect that.
+
 ## [1.7.2](https://github.com/puppetlabs/puppetlabs-cd4pe_jobs/tree/1.7.2)
 
 ### Added
