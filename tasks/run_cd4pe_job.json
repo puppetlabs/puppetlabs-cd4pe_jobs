@@ -1,6 +1,5 @@
 {
-  "private": true,
-  "description": "Retrieves the Puppet control repo and job script for the specified job instance id.",
+  "description": "Used by Continuous Delivery pipelines to execute testing jobs on job hardware.",
   "parameters": {
     "job_instance_id": {
       "type": "String[1]",
