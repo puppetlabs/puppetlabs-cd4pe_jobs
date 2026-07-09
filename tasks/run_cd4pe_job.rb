@@ -208,7 +208,6 @@ class CD4PEJobRunner < Object
 
   def initialize(working_dir:, job_token:, web_ui_endpoint:, job_owner:, job_instance_id:, logger:, windows_job: false, base_64_ca_cert: nil, container_image: nil, container_run_args: nil, image_pull_creds: nil, secrets:)
     @logger = logger
-    @image_repo = nil
     @container_image = container_image
     @container_run_args = container_run_args.nil? ? '' : container_run_args.join(' ')
     @containerized_job = !blank?(container_image)
@@ -416,11 +415,10 @@ class CD4PEJobRunner < Object
   end
 
   def get_image_pull_cmd
-    image = @image_repo.nil? ? @container_image : "#{@image_repo}/#{@container_image}"
     if @image_pull_config.nil?
-      "#{@runtime} pull #{image}"
+      "#{@runtime} pull #{@container_image}"
     else
-      "#{@runtime} --config #{@image_pull_config} pull #{image}"
+      "#{@runtime} --config #{@image_pull_config} pull #{@container_image}"
     end
   end
 
@@ -428,11 +426,6 @@ class CD4PEJobRunner < Object
     if (@containerized_job)
       @logger.log("Updating container image: #{@container_image}")
       result = run_system_cmd(get_image_pull_cmd)
-      if (result[:exit_code] == 125)
-        @logger.log("Failed to pull using given image name. Re-try directly from docker.io.")
-        @image_repo = 'docker.io'
-        result = run_system_cmd(get_image_pull_cmd)
-      end
 
       @logger.log(result[:message])
 
