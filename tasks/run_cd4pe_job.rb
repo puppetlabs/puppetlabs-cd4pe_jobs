@@ -206,10 +206,11 @@ class CD4PEJobRunner < Object
   DOCKER_CERTS = '/etc/docker/certs.d'
   PODMAN_CERTS = '/etc/containers/certs.d'
 
-  def initialize(working_dir:, job_token:, web_ui_endpoint:, job_owner:, job_instance_id:, logger:, windows_job: false, base_64_ca_cert: nil, container_image: nil, container_run_args: nil, image_pull_creds: nil, secrets:)
+  def initialize(working_dir:, job_token:, web_ui_endpoint:, job_owner:, job_instance_id:, logger:, windows_job: false, base_64_ca_cert: nil, container_image: nil, container_run_args: nil, image_pull_creds: nil, image_pull_policy: nil, secrets:)
     @logger = logger
     @container_image = container_image
     @container_run_args = container_run_args.nil? ? '' : container_run_args.join(' ')
+    @image_pull_policy = image_pull_policy.nil? ? 'Always' : image_pull_policy
     @containerized_job = !blank?(container_image)
     @windows_job = windows_job
     @runtime = get_runtime
@@ -422,16 +423,34 @@ class CD4PEJobRunner < Object
     end
   end
 
+  def get_image_inspect_cmd
+    if @runtime == 'podman'
+      "podman image exists #{@container_image}"
+    else
+      "docker image inspect #{@container_image}"
+    end
+  end
+
+  def image_present_locally?
+    run_system_cmd(get_image_inspect_cmd, false)[:exit_code] == 0
+  end
+
   def update_container_image
-    if (@containerized_job)
-      @logger.log("Updating container image: #{@container_image}")
-      result = run_system_cmd(get_image_pull_cmd)
+    return unless @containerized_job
+    return if @image_pull_policy == 'Never'
 
-      @logger.log(result[:message])
+    if @image_pull_policy == 'IfNotPresent' && image_present_locally?
+      @logger.log("Image #{@container_image} already present locally; skipping pull (IfNotPresent).")
+      return
+    end
 
-      if (result[:exit_code] != 0)
-        @logger.log("Unable to update image #{@container_image}, falling back to local image.")
-      end
+    @logger.log("Updating container image: #{@container_image}")
+    result = run_system_cmd(get_image_pull_cmd)
+
+    @logger.log(result[:message])
+
+    if (result[:exit_code] != 0)
+      @logger.log("Unable to update image #{@container_image}, falling back to local image.")
     end
   end
 
@@ -601,6 +620,7 @@ if __FILE__ == $0 # This block will only be invoked if this file is executed. Wi
     container_image = params['docker_image']
     container_run_args = params["docker_run_args"]
     image_pull_creds = params['docker_pull_creds']
+    image_pull_policy = params['image_pull_policy']
     job_instance_id = params["job_instance_id"]
     web_ui_endpoint = params['cd4pe_web_ui_endpoint']
     job_token = params['cd4pe_token']
@@ -621,6 +641,7 @@ if __FILE__ == $0 # This block will only be invoked if this file is executed. Wi
       container_image: container_image,
       container_run_args: container_run_args,
       image_pull_creds: image_pull_creds,
+      image_pull_policy: image_pull_policy,
       job_token: job_token,
       web_ui_endpoint: web_ui_endpoint,
       job_owner: job_owner,

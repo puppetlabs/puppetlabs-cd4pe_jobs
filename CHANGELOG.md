@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- A new optional `image_pull_policy` task parameter controls whether the
+  container image is pulled before a job runs: `Always` (the default, and the
+  previous behavior) pulls on every run; `IfNotPresent` pulls only when the
+  image is absent from the local runtime; `Never` skips the pull entirely and
+  relies on the locally present image. Presence is checked with
+  `docker image inspect` / `podman image exists`. Omitting the parameter keeps
+  the existing pull-every-run behavior.
+
 ### Changed
 - The module no longer retries a failed image pull against `docker.io`.
   Previously, when a pull exited 125 the module would prepend `docker.io/`
