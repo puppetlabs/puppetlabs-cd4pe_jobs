@@ -437,7 +437,11 @@ class CD4PEJobRunner < Object
 
   def update_container_image
     return unless @containerized_job
-    return if @image_pull_policy == 'Never'
+
+    if @image_pull_policy == 'Never'
+      @logger.log("Image pull policy set to Never, skipping pull for #{@container_image}.")
+      return
+    end
 
     if @image_pull_policy == 'IfNotPresent' && image_present_locally?
       @logger.log("Image #{@container_image} already present locally; skipping pull (IfNotPresent).")
@@ -450,7 +454,11 @@ class CD4PEJobRunner < Object
     @logger.log(result[:message])
 
     if (result[:exit_code] != 0)
-      @logger.log("Unable to update image #{@container_image}, falling back to local image.")
+      if @image_pull_policy == 'IfNotPresent'
+        @logger.log("Failed to pull #{@container_image} and it is not present locally. The container run will likely fail.")
+      else
+        @logger.log("Unable to update image #{@container_image}, falling back to local image.")
+      end
     end
   end
 
