@@ -444,11 +444,11 @@ class CD4PEJobRunner < Object
     end
 
     if @image_pull_policy == 'IfNotPresent' && image_present_locally?
-      @logger.log("Image #{@container_image} already present locally; skipping pull (IfNotPresent).")
+      @logger.log("Image pull policy set to IfNotPresent and #{@container_image} already present locally; skipping pull.")
       return
     end
 
-    @logger.log("Updating container image: #{@container_image}")
+    @logger.log("Image pull policy set to #{@image_pull_policy}, pulling container image: #{@container_image}")
     result = run_system_cmd(get_image_pull_cmd)
 
     @logger.log(result[:message])
