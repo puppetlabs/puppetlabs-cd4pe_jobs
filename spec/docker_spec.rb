@@ -77,6 +77,48 @@ describe 'run_cd4pe_job' do
     end
   end
 
+  describe 'cd4pe_job_helper::update_container_image image_pull_policy' do
+    let(:test_container_image) { 'puppetlabs/test:10.0.1' }
+    let(:pull_cmd) { "docker pull #{test_container_image}" }
+    let(:inspect_cmd) { "docker image inspect #{test_container_image}" }
+
+    def runner(policy)
+      CD4PEJobRunner.new(windows_job: @windows_job, working_dir: @working_dir, container_image: test_container_image, image_pull_policy: policy, job_token: @job_token, web_ui_endpoint: @web_ui_endpoint, job_owner: @job_owner, job_instance_id: @job_instance_id, logger: @logger, secrets: @secrets)
+    end
+
+    it 'Never skips the pull entirely.' do
+      job_helper = runner('Never')
+      expect(job_helper).not_to receive(:run_system_cmd)
+      job_helper.update_container_image
+    end
+
+    it 'IfNotPresent skips the pull when the image is present locally.' do
+      job_helper = runner('IfNotPresent')
+      allow(job_helper).to receive(:run_system_cmd).with(inspect_cmd, false).and_return({ exit_code: 0, message: '' })
+      expect(job_helper).not_to receive(:run_system_cmd).with(pull_cmd)
+      job_helper.update_container_image
+    end
+
+    it 'IfNotPresent pulls when the image is absent locally.' do
+      job_helper = runner('IfNotPresent')
+      allow(job_helper).to receive(:run_system_cmd).with(inspect_cmd, false).and_return({ exit_code: 1, message: '' })
+      expect(job_helper).to receive(:run_system_cmd).with(pull_cmd).and_return({ exit_code: 0, message: '' })
+      job_helper.update_container_image
+    end
+
+    it 'Always pulls unconditionally.' do
+      job_helper = runner('Always')
+      expect(job_helper).to receive(:run_system_cmd).with(pull_cmd).and_return({ exit_code: 0, message: '' })
+      job_helper.update_container_image
+    end
+
+    it 'defaults to Always when no policy is given.' do
+      job_helper = runner(nil)
+      expect(job_helper).to receive(:run_system_cmd).with(pull_cmd).and_return({ exit_code: 0, message: '' })
+      job_helper.update_container_image
+    end
+  end
+
   describe 'cd4pe_job_helper::get_container_run_cmd' do
     it 'Generates the correct docker run command.' do
       test_manifest_type = "AFTER_JOB_SUCCESS"
