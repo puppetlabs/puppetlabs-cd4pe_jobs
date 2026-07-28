@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [1.7.4](https://github.com/puppetlabs/puppetlabs-cd4pe_jobs/tree/1.7.4)
+
 ### Added
 - A new optional `image_pull_policy` task parameter controls whether the
   container image is pulled before a job runs: `Always` (the default, and the
@@ -17,14 +19,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   the existing pull-every-run behavior.
 
 ### Changed
-- The module no longer retries a failed image pull against `docker.io`.
-  Previously, when a pull exited 125 the module would prepend `docker.io/`
-  to the image name and pull again, papering over the difference between
-  Docker (which defaults unqualified names to Docker Hub) and Podman (which
-  resolves unqualified names via `registries.conf`). That retry ignored the
-  host's registry configuration and could reach Docker Hub even when the
-  operator had deliberately excluded it. Image names are now pulled exactly
-  as given. If you rely on unqualified image names (e.g. `nginx`,
+- The module no longer retries a failed image pull against `docker.io`. 
+  Image names are now pulled exactly as given. If you rely on unqualified image names (e.g. `nginx`,
   `myuser/myimage`) on a Podman host, add `docker.io` to
   `unqualified-search-registries` in `registries.conf`, or use a
   fully-qualified name.
