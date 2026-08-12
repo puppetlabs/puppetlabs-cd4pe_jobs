@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [1.7.5](https://github.com/puppetlabs/puppetlabs-cd4pe_jobs/tree/1.7.5)
+
+### Added
+- Support for Puppet 9. The `puppet` requirement in `metadata.json` is now
+  `>= 7.24 < 10.0.0`.
+
 ## [1.7.4](https://github.com/puppetlabs/puppetlabs-cd4pe_jobs/tree/1.7.4)
 
 ### Added
