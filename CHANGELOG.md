@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [1.7.6](https://github.com/puppetlabs/puppetlabs-cd4pe_jobs/tree/1.7.6)
+
+### Fixed
+- `run_cd4pe_job.rb` now explicitly requires `fileutils`. Previously it relied on
+  `FileUtils` being loaded implicitly, which is no longer the case with the Ruby bundled in
+  Puppet agent 9 (Ruby 4.0). On those agents, jobs failed while unpacking the job payload with
+  `uninitialized constant GZipHelper::FileUtils`.
+
 ## [1.7.5](https://github.com/puppetlabs/puppetlabs-cd4pe_jobs/tree/1.7.5)
 
 ### Added
