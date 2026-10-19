@@ -9,6 +9,7 @@ require 'base64'
 require 'facter'
 require 'date'
 require 'etc'
+require 'fileutils'
 
 class Logger < Object
   # Class to track logs + timestamps. To be returned as part of the Bolt log output
